@@ -1,26 +1,68 @@
+@layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #18181b;
+  --primary: #ffc500;
+  --primary-foreground: #000000;
+  --secondary: #000000;
+  --secondary-foreground: #ffffff;
+  --panel-bg: #ffffff;
+  --panel-bg-alt: #f1f3f5;
+  --panel-border: #d1d5db;
+  --panel-border-muted: #e5e7eb;
+  --panel-text: #111827;
+  --panel-text-muted: #6b7280;
+  --panel-control-bg: #e5e7eb;
+  --panel-notice-bg: rgba(59, 130, 246, 0.12);
+  --panel-notice-border: rgba(59, 130, 246, 0.35);
+  --panel-notice-text: #1d4ed8;
+  --panel-danger-bg: rgba(239, 68, 68, 0.12);
+  --panel-danger-border: rgba(239, 68, 68, 0.45);
+  --panel-danger-text: #b91c1c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #fafafa;
+    --secondary: #ffffff;
+    --secondary-foreground: #000000;
+
+    --panel-bg: #18181b;
+    --panel-bg-alt: #232326;
+    --panel-border: #3f3f46;
+    --panel-border-muted: #27272a;
+    --panel-text: #fafafa;
+    --panel-text-muted: #a1a1aa;
+    --panel-control-bg: #27272a;
+    --panel-notice-bg: rgba(59, 130, 246, 0.18);
+    --panel-notice-border: rgba(96, 165, 250, 0.45);
+    --panel-notice-text: #93c5fd;
+    --panel-danger-bg: rgba(239, 68, 68, 0.18);
+    --panel-danger-border: rgba(248, 113, 113, 0.5);
+    --panel-danger-text: #fca5a5;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
 }
