@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { DeviceConnectionPanel } from "@/components/bluetooth/device-connection-panel";
 import { BackButton } from "@/components/ui/back-button";
 import { DeviceIconTile } from "@/lib/homepage/device-icon-tile";
 import { devices, getDevice } from "@/lib/homepage/devices";
@@ -35,7 +36,9 @@ export default async function DevicePage(props: PageProps<"/devices/[slug]">) {
           {device.name}
         </Typography>
       </Stack>
-      <Typography sx={{ color: "text.secondary" }}>{device.description}</Typography>
+      <Typography sx={{ color: "text.secondary", mb: 4 }}>{device.description}</Typography>
+
+      <DeviceConnectionPanel slug={device.slug} />
     </Container>
   );
 }

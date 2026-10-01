@@ -1,8 +1,9 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import packageJson from "@/package.json";
+import { appVersion, buildId } from "@/lib/app-version";
 
-// Server component, so only the version string reaches the client bundle.
+// Server component, so only the version strings reach the client bundle. Support can ask
+// users to read this out to confirm their installed app is on the latest deploy.
 export function Footer() {
   return (
     <Box
@@ -18,7 +19,7 @@ export function Footer() {
       }}
     >
       <Typography variant="body2" sx={{ color: "text.secondary" }}>
-        Version {packageJson.version}
+        Version {appVersion} (build {buildId})
       </Typography>
     </Box>
   );

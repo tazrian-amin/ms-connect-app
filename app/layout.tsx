@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { UnloadGuard } from "@/components/bluetooth/unload-guard";
+import { AppUpdater } from "@/components/providers/app-updater";
+import { OfflineNavigation } from "@/components/providers/offline-navigation";
 import { Providers } from "@/components/providers/providers";
-import { ServiceWorkerRegister } from "@/components/providers/service-worker-register";
 import { Footer } from "@/components/layout/footer";
 import { TopNav } from "@/components/layout/top-nav";
 
@@ -26,7 +28,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
-    apple: "/icons/apple-touch-icon.png",
+    apple: "/icons/icon-192.png",
   },
 };
 
@@ -41,11 +43,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ServiceWorkerRegister />
         <Providers>
           <TopNav />
           {children}
           <Footer />
+          <AppUpdater />
+          <OfflineNavigation />
+          <UnloadGuard />
         </Providers>
       </body>
     </html>
