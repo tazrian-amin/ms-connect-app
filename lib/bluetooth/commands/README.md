@@ -2,7 +2,7 @@
 
 This document describes how MS Connect devices exchange data with the MS Connect app over Bluetooth Low Energy (BLE). All six device types use the same transport and message format. They differ only in the message types they send and the commands they accept.
 
-> **Status: draft.** The transport, framing and message envelope are settled. The data model of each device (its message types and their `data` fields) is **not defined yet**; see section 5.
+> **Status: draft.** The transport, framing and message envelope are settled. The data model of each device (its message types and their `data` fields) is a **placeholder** that has not been agreed with firmware yet; see section 5.
 
 ## 1. Transport
 
@@ -59,7 +59,7 @@ The format is the same, but without `deviceId`, because the Bluetooth link alrea
 ### Validation rules (applied by the app)
 
 - All four envelope fields are required.
-- Once a device's data model is defined: messages with an unknown `type` are rejected, and every listed field is required and must have the listed type. The app checks its own outgoing commands the same way before sending them.
+- Messages with an unknown `type` are rejected, and every listed field is required and must have the listed type. The app checks its own outgoing commands the same way before sending them.
 - **Unknown extra fields are ignored.** New fields can be added to a message without breaking older app versions. Removing or renaming a field is a breaking change.
 - The device should handle commands the same way. If a command has an unknown `type` or invalid `data`, do not act on it. How to report the rejection to the app will be part of the data model. Ignore unknown extra fields.
 
@@ -75,22 +75,65 @@ The format is the same, but without `deviceId`, because the Bluetooth link alrea
 
 ## 5. Device data models
 
-**To be defined.** For now, every device accepts any non-empty `type` string and any JSON object as `data`, in both directions.
+> **Placeholders.** The message types and fields below are proposals, not agreed with firmware yet. The app already validates strictly against them, so firmware that sends anything else will have its messages rejected until the models are agreed and this table is updated.
 
-When a device's model is agreed, it will be listed here as a table of message types, each with its `data` fields, field types (section 4) and units. From then on, both sides check every message strictly against it, as described in section 3.
+Field types are from section 4. `{}` means the message has no fields.
 
-| Device | Device → app | App → device |
+### Discharge Water Flow Monitor
+
+| Direction | `type` | `data` |
 | --- | --- | --- |
-| Discharge Water Flow Monitor | TBD | TBD |
-| Dewater Water Level Monitor | TBD | TBD |
-| Dewater Pump Float Replacement | TBD | TBD |
-| Conveyor Volumetric Scale | TBD | TBD |
-| Conveyor Volumetric Scale Pro | TBD | TBD |
-| Bin Height Measurement | TBD | TBD |
+| Device → app | `reading` | `flowRate`: number (L/min), `totalVolume`: number (L since last reset) |
+| App → device | `requestReading` | `{}` |
+| App → device | `resetTotal` | `{}` |
+
+### Dewater Water Level Monitor
+
+| Direction | `type` | `data` |
+| --- | --- | --- |
+| Device → app | `reading` | `waterLevel`: number (m) |
+| Device → app | `alarm` | `level`: `"high" \| "low" \| "normal"` |
+| App → device | `requestReading` | `{}` |
+| App → device | `setAlarmLevels` | `highLevel`: number (m), `lowLevel`: number (m) |
+
+### Dewater Pump Float Replacement
+
+| Direction | `type` | `data` |
+| --- | --- | --- |
+| Device → app | `reading` | `waterLevel`: number (m), `pumpRunning`: boolean |
+| App → device | `requestReading` | `{}` |
+| App → device | `setPumpLevels` | `startLevel`: number (m), `stopLevel`: number (m) |
+| App → device | `setPumpMode` | `mode`: `"auto" \| "on" \| "off"` |
+
+### Conveyor Volumetric Scale
+
+| Direction | `type` | `data` |
+| --- | --- | --- |
+| Device → app | `reading` | `volumeRate`: number (m³/h), `totalVolume`: number (m³ since last reset), `beltSpeed`: number (m/s) |
+| App → device | `requestReading` | `{}` |
+| App → device | `resetTotal` | `{}` |
+
+### Conveyor Volumetric Scale Pro
+
+| Direction | `type` | `data` |
+| --- | --- | --- |
+| Device → app | `reading` | `volumeRate`: number (m³/h), `totalVolume`: number (m³ since last reset), `massRate`: number (t/h), `beltSpeed`: number (m/s) |
+| App → device | `requestReading` | `{}` |
+| App → device | `resetTotal` | `{}` |
+| App → device | `setMaterialDensity` | `density`: number (t/m³) |
+
+### Bin Height Measurement
+
+| Direction | `type` | `data` |
+| --- | --- | --- |
+| Device → app | `reading` | `height`: number (m, sensor to material surface) |
+| Device → app | `settings` | `binHeight`: number (m) |
+| App → device | `requestReading` | `{}` |
+| App → device | `setBinHeight` | `binHeight`: number (m) |
 
 ## 6. Example session
 
-Message types and fields here are illustrative only.
+This uses the placeholder Bin Height Measurement model from section 5.
 
 ```text
 app    connects, enables notifications on TX

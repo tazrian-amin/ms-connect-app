@@ -46,18 +46,8 @@ export type DataSchema = Record<string, FieldType>;
 
 export type DataOf<S extends DataSchema> = { [F in keyof S]: FieldValue<S[F]> };
 
-/**
- * Stands in for a direction whose data model is not defined yet: any `type` string and any
- * JSON object as `data` are accepted. Replace it with a type → schema map to check strictly.
- */
-export const placeholderData = "placeholder";
-export type PlaceholderData = typeof placeholderData;
-
-/** Any JSON object; the payload type while a direction still uses `placeholderData`. */
-export type PlaceholderPayload = Record<string, unknown>;
-
-/** Message `type` → schema of its `data`, or `placeholderData` until the model is defined. */
-export type MessageSchemas = Record<string, DataSchema> | PlaceholderData;
+/** Message `type` → schema of its `data`. */
+export type MessageSchemas = Record<string, DataSchema>;
 
 /** Every message a device can send and every command it accepts, by `type`. */
 export type CommandSet = {
@@ -65,15 +55,10 @@ export type CommandSet = {
   toDevice: MessageSchemas;
 };
 
-type TypeIn<M extends MessageSchemas> = M extends PlaceholderData ? string : keyof M & string;
-type PayloadIn<M extends MessageSchemas, T extends string> = M extends PlaceholderData
-  ? PlaceholderPayload
-  : M extends Record<string, DataSchema>
-    ? DataOf<M[T]>
-    : never;
+type PayloadIn<M extends MessageSchemas, T extends keyof M> = M[T] extends DataSchema ? DataOf<M[T]> : never;
 
-export type MessageType<C extends CommandSet> = TypeIn<C["fromDevice"]>;
-export type CommandType<C extends CommandSet> = TypeIn<C["toDevice"]>;
+export type MessageType<C extends CommandSet> = keyof C["fromDevice"] & string;
+export type CommandType<C extends CommandSet> = keyof C["toDevice"] & string;
 export type MessageData<C extends CommandSet, T extends MessageType<C>> = PayloadIn<C["fromDevice"], T>;
 export type CommandData<C extends CommandSet, T extends CommandType<C>> = PayloadIn<C["toDevice"], T>;
 
@@ -86,6 +71,11 @@ export type DeviceMessage<C extends CommandSet, T extends MessageType<C> = Messa
 export type AppCommand<C extends CommandSet, T extends CommandType<C> = CommandType<C>> = {
   [M in T]: { timestamp: number; type: M; data: CommandData<C, M> };
 }[T];
+
+/** Identity helper for one direction's schemas that keeps message types and field types as literals. */
+export function defineMessages<const M extends MessageSchemas>(messages: M): M {
+  return messages;
+}
 
 /** Identity helper that keeps message types and field types as literals. */
 export function defineCommands<const F extends MessageSchemas, const T extends MessageSchemas>(commands: {
@@ -138,9 +128,8 @@ export function formatAppCommand<C extends CommandSet>(commands: C, command: App
 /** Why `type` and `data` do not match the schemas, or null if they do. */
 function checkPayload(schemas: MessageSchemas, type: unknown, data: unknown): string | null {
   if (typeof type !== "string" || type === "") return "`type` must be a non-empty string.";
-  if (schemas !== placeholderData && !Object.hasOwn(schemas, type)) return `Unknown message type ${JSON.stringify(type)}.`;
+  if (!Object.hasOwn(schemas, type)) return `Unknown message type ${JSON.stringify(type)}.`;
   if (!isObject(data)) return "`data` must be a JSON object.";
-  if (schemas === placeholderData) return null;
 
   for (const [field, fieldType] of Object.entries(schemas[type])) {
     if (!matches(data[field], fieldType)) return `\`data.${field}\` of "${type}" must be ${describe(fieldType)}.`;

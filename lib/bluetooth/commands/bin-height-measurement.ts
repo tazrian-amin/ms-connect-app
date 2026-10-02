@@ -1,9 +1,30 @@
-import { defineCommands, placeholderData } from "./schema";
+import { defineCommands, defineMessages, type AppCommand, type DeviceMessage } from "./schema";
 
-// TODO: Replace each placeholder with a map of message type → data schema once the data model
-// is agreed with firmware, e.g. `fromDevice: { reading: { level: "number" } }`. From then on
-// incoming and outgoing data are checked strictly against it.
-export const binHeightMeasurementCommands = defineCommands({
-  fromDevice: placeholderData,
-  toDevice: placeholderData,
+// TODO: Placeholder data model. Replace these message types and fields with the ones agreed with
+// firmware. Incoming and outgoing data are already checked strictly against what is declared here.
+
+/** Messages the device sends to the app. */
+export const binHeightMeasurementIncomingData = defineMessages({
+  reading: {
+    height: "number", // m, sensor to material surface
+  },
+  settings: {
+    binHeight: "number", // m
+  },
 });
+
+/** Commands the app sends to the device. */
+export const binHeightMeasurementOutgoingData = defineMessages({
+  requestReading: {},
+  setBinHeight: {
+    binHeight: "number", // m
+  },
+});
+
+export const binHeightMeasurementCommands = defineCommands({
+  fromDevice: binHeightMeasurementIncomingData,
+  toDevice: binHeightMeasurementOutgoingData,
+});
+
+export type BinHeightMeasurementMessage = DeviceMessage<typeof binHeightMeasurementCommands>;
+export type BinHeightMeasurementCommand = AppCommand<typeof binHeightMeasurementCommands>;
