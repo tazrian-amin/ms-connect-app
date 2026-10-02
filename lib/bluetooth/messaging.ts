@@ -29,6 +29,8 @@ type MessageListener<C extends CommandSet> = (message: DeviceMessage<C>) => void
  * - Notifications are only enabled while something is listening.
  * - Outgoing commands are validated the same way before anything is written.
  * - On every (re)connect the partial-line buffer is cleared.
+ * - The last command of each type sent during the current link is kept until the link ends,
+ *   so the UI can show what was set even when the device does not report its settings back.
  */
 export class DeviceMessenger<C extends CommandSet> {
   readonly connection: BluetoothConnection<MessagingCharacteristic>;
@@ -39,6 +41,8 @@ export class DeviceMessenger<C extends CommandSet> {
   #decoder = new TextDecoder();
   #buffer = "";
   #wasConnected = false;
+  #lastSent = new Map<CommandType<C>, AppCommand<C>>();
+  #sentListeners = new Set<() => void>();
 
   constructor(connection: BluetoothConnection<MessagingCharacteristic>, commands: C) {
     this.connection = connection;
@@ -73,7 +77,20 @@ export class DeviceMessenger<C extends CommandSet> {
       writes.push(this.connection.write("toDevice", bytes.subarray(offset, offset + WRITE_CHUNK_BYTES)));
     }
     await Promise.all(writes);
+    this.#lastSent.set(type, command);
+    this.#sentListeners.forEach((listener) => listener());
   }
+
+  /** The last command of `type` the device acknowledged during the current link, or null. */
+  getLastSent<T extends CommandType<C>>(type: T): AppCommand<C, T> | null {
+    return (this.#lastSent.get(type) as AppCommand<C, T> | undefined) ?? null;
+  }
+
+  /** Notifies when a command is sent or the remembered commands are cleared. Pairs with `getLastSent`. */
+  subscribeSent = (listener: () => void): (() => void) => {
+    this.#sentListeners.add(listener);
+    return () => this.#sentListeners.delete(listener);
+  };
 
   #receive = (value: DataView) => {
     this.#buffer += this.#decoder.decode(value, { stream: true });
@@ -102,7 +119,15 @@ export class DeviceMessenger<C extends CommandSet> {
   }
 
   #handleState = () => {
-    const connected = this.connection.getState().status === "connected";
+    const { status } = this.connection.getState();
+    // Settings may differ on the next link (another unit, or changed on the device meanwhile).
+    // A brief reconnect keeps them, since it is still the same unit.
+    if (status === "disconnected" && this.#lastSent.size > 0) {
+      this.#lastSent.clear();
+      this.#sentListeners.forEach((listener) => listener());
+    }
+
+    const connected = status === "connected";
     if (connected === this.#wasConnected) return;
     this.#wasConnected = connected;
     // A packet cut off by the drop would corrupt the first line after reconnecting.

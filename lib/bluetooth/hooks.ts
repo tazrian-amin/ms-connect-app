@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useState, useSyncExternalStore } from "react";
-import type { CommandSet, DeviceMessage, MessageType } from "./commands/schema";
+import type { AppCommand, CommandSet, CommandType, DeviceMessage, MessageType } from "./commands/schema";
 import { initialConnectionState, type BluetoothConnection, type ConnectionState } from "./connection";
 import type { DeviceMessenger } from "./messaging";
 import type { DeviceProfile } from "./profile";
@@ -49,8 +49,12 @@ export function useDeviceConnection<K extends string>(
   profile: DeviceProfile<K>,
 ): ConnectionState & { connection: BluetoothConnection<K> } {
   const connection = getConnection(profile);
-  const state = useSyncExternalStore(connection.subscribeState, connection.getState, () => initialConnectionState);
-  return { ...state, connection };
+  return { ...useConnectionState(connection), connection };
+}
+
+/** Live state of a connection you already hold, e.g. `messenger.connection`. */
+export function useConnectionState(connection: BluetoothConnection): ConnectionState {
+  return useSyncExternalStore(connection.subscribeState, connection.getState, () => initialConnectionState);
 }
 
 /** Latest notified value of a characteristic, or null until the device sends one. */
@@ -83,4 +87,16 @@ export function useLatestMessage<C extends CommandSet, T extends MessageType<C>>
     [messenger, type],
   );
   return message;
+}
+
+/** Last command of one type sent to the device during the current link, or null. */
+export function useLastSentCommand<C extends CommandSet, T extends CommandType<C>>(
+  messenger: DeviceMessenger<C>,
+  type: T,
+): AppCommand<C, T> | null {
+  return useSyncExternalStore(
+    messenger.subscribeSent,
+    () => messenger.getLastSent(type),
+    () => null,
+  );
 }
