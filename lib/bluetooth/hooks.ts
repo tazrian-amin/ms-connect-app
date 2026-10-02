@@ -1,5 +1,7 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useState, useSyncExternalStore } from "react";
+import type { CommandSet, DeviceMessage, MessageType } from "./commands/schema";
 import { initialConnectionState, type BluetoothConnection, type ConnectionState } from "./connection";
+import type { DeviceMessenger } from "./messaging";
 import type { DeviceProfile } from "./profile";
 import { getConnection } from "./registry";
 
@@ -56,4 +58,29 @@ export function useCharacteristicValue<K extends string>(connection: BluetoothCo
   const [value, setValue] = useState<DataView | null>(null);
   useEffect(() => connection.subscribe(key, setValue), [connection, key]);
   return value;
+}
+
+/** Calls `onMessage` for every valid message the device sends while the component is mounted. */
+export function useDeviceMessages<C extends CommandSet>(
+  messenger: DeviceMessenger<C>,
+  onMessage: (message: DeviceMessage<C>) => void,
+): void {
+  const handleMessage = useEffectEvent(onMessage);
+  useEffect(() => messenger.subscribe((message) => handleMessage(message)), [messenger]);
+}
+
+/** Latest message of one type from the device, or null until it sends one. */
+export function useLatestMessage<C extends CommandSet, T extends MessageType<C>>(
+  messenger: DeviceMessenger<C>,
+  type: T,
+): DeviceMessage<C, T> | null {
+  const [message, setMessage] = useState<DeviceMessage<C, T> | null>(null);
+  useEffect(
+    () =>
+      messenger.subscribe((received) => {
+        if (received.type === type) setMessage(received as DeviceMessage<C, T>);
+      }),
+    [messenger, type],
+  );
+  return message;
 }

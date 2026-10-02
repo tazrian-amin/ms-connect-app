@@ -40,3 +40,16 @@ export const standardCharacteristics = {
 } satisfies Record<string, CharacteristicRef>;
 
 export type StandardCharacteristic = keyof typeof standardCharacteristics;
+
+// Every device exchanges messages (see ./commands) over the Nordic UART Service, the de facto
+// standard serial-over-BLE service that every common firmware BLE stack ships an implementation of.
+export const messagingService: BluetoothServiceUUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+
+export const messagingCharacteristics = {
+  /** NUS TX: the device notifies its messages here. */
+  fromDevice: { service: messagingService, characteristic: "6e400003-b5a3-f393-e0a9-e50e24dcca9e" },
+  /** NUS RX: the app writes its commands here. */
+  toDevice: { service: messagingService, characteristic: "6e400002-b5a3-f393-e0a9-e50e24dcca9e" },
+} satisfies Record<string, CharacteristicRef>;
+
+export type MessagingCharacteristic = keyof typeof messagingCharacteristics;

@@ -1,10 +1,17 @@
-import { defineProfile, standardCharacteristics, standardServices } from "@/lib/bluetooth/profile";
+import {
+  defineProfile,
+  messagingCharacteristics,
+  messagingService,
+  standardCharacteristics,
+  standardServices,
+} from "@/lib/bluetooth/profile";
 
-// TODO: Add the firmware's advertising filter (e.g. `[{ namePrefix: "..." }]`), its custom
-// service UUIDs in `optionalServices`, and its data/command characteristics.
+// TODO: Add the firmware's advertising filter (e.g. `[{ namePrefix: "..." }]`) and any custom
+// services beyond messaging in `optionalServices`.
 export const conveyorVolumetricScaleProProfile = defineProfile({
-  optionalServices: [...standardServices],
+  optionalServices: [...standardServices, messagingService],
   characteristics: {
     ...standardCharacteristics,
+    ...messagingCharacteristics,
   },
 });

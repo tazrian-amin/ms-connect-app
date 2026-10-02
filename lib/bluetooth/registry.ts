@@ -6,13 +6,13 @@ import { dewaterWaterLevelMonitorProfile } from "@/lib/dewater-water-level-monit
 import { dischargeWaterFlowMonitorProfile } from "@/lib/discharge-water-flow-monitor/bluetooth-profile";
 import { getDevice } from "@/lib/homepage/devices";
 import { BluetoothConnection } from "./connection";
-import type { DeviceProfile, StandardCharacteristic } from "./profile";
+import type { DeviceProfile, MessagingCharacteristic, StandardCharacteristic } from "./profile";
 
 /**
- * Bluetooth profile for each device slug. Every profile includes the standard
+ * Bluetooth profile for each device slug. Every profile includes the standard and messaging
  * characteristics so device-agnostic UI (the connection panel) can rely on them.
  */
-export const deviceProfiles: Record<string, DeviceProfile<StandardCharacteristic>> = {
+export const deviceProfiles: Record<string, DeviceProfile<StandardCharacteristic | MessagingCharacteristic>> = {
   "discharge-water-flow-monitor": dischargeWaterFlowMonitorProfile,
   "dewater-water-level-monitor": dewaterWaterLevelMonitorProfile,
   "dewater-pump-float-replacement": dewaterPumpFloatReplacementProfile,
