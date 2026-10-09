@@ -1,27 +1,16 @@
-import { defineCommands, defineMessages, type AppCommand, type DeviceMessage } from "./schema";
+import { defineCommands, type DeviceData } from "./schema";
 
-// TODO: Placeholder data model. Replace these message types and fields with the ones agreed with
+// TODO: Placeholder data model. Replace these fields, actions and settings with the ones agreed with
 // firmware. Incoming and outgoing data are already checked strictly against what is declared here.
 
-/** Messages the device sends to the app. */
-export const conveyorVolumetricScaleIncomingData = defineMessages({
-  reading: {
-    volumeRate: "number", // m³/h
-    totalVolume: "number", // m³ since last reset
-    beltSpeed: "number", // m/s
-  },
-});
-
-/** Commands the app sends to the device. */
-export const conveyorVolumetricScaleOutgoingData = defineMessages({
-  requestReading: {},
-  resetTotal: {},
-});
-
 export const conveyorVolumetricScaleCommands = defineCommands({
-  fromDevice: conveyorVolumetricScaleIncomingData,
-  toDevice: conveyorVolumetricScaleOutgoingData,
+  fields: {
+    volume_rate: "number", // m³/h
+    total_volume: "number", // m³ since last reset
+    belt_speed: "number", // m/s
+  },
+  actions: ["get_reading", "reset_total"],
+  settings: {},
 });
 
-export type ConveyorVolumetricScaleMessage = DeviceMessage<typeof conveyorVolumetricScaleCommands>;
-export type ConveyorVolumetricScaleCommand = AppCommand<typeof conveyorVolumetricScaleCommands>;
+export type ConveyorVolumetricScaleData = DeviceData<typeof conveyorVolumetricScaleCommands>;

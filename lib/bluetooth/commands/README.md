@@ -1,12 +1,29 @@
 # MS Connect Bluetooth protocol
 
-This document describes how MS Connect devices exchange data with the MS Connect app over Bluetooth Low Energy (BLE). All six device types use the same transport and message format. They differ only in the message types they send and the commands they accept.
+How every MS Connect device talks to the MS Connect app over Bluetooth Low Energy (BLE). All device types use the same connection, the same message format and the same command format. The only thing that differs between devices is **which fields they report and which commands they accept** (section 6).
 
-> **Status: draft.** The transport, framing and message envelope are settled. The data model of each device (its message types and their `data` fields) is a **placeholder** that has not been agreed with firmware yet; see section 5.
+> **Status: draft.** Sections 1–5 are settled. In section 6, only Dewater Pump Float Replacement has been agreed with firmware; the other device models are placeholders.
 
-## 1. Transport
+## At a glance
 
-Every device exposes the **Nordic UART Service (NUS)**:
+```text
+            ┌──────────── device → app (TX, notify) ─────────────┐
+            │  {"deviceId":"BH-0007","timestamp":1759400000000,  │
+            │   "data":{"height":2.41}}\n                        │
+ DEVICE  ───┤                                                    ├───  APP
+            │  {"cmd":"get_reading"}\n                           │
+            │  {"set_bin_height":"6"}\n                          │
+            └──────────── app → device (RX, write) ──────────────┘
+```
+
+- Everything is **JSON text, one message per line, ending in `\n`**.
+- **Device → app:** always the same three-key envelope: `deviceId`, `timestamp`, `data`.
+- **App → device:** a one-key JSON object. Either an **action** (`{"cmd":"<name>"}`) or a **setting** (`{"<name>":"<value>"}`).
+- The device **replies to every command** with a normal device → app message.
+
+## 1. Connection
+
+Use the **Nordic UART Service (NUS)** if the firmware has its own BLE stack:
 
 | Role | UUID | Properties |
 | --- | --- | --- |
@@ -14,134 +31,263 @@ Every device exposes the **Nordic UART Service (NUS)**:
 | **TX**: device → app | `6e400003-b5a3-f393-e0a9-e50e24dcca9e` | Notify |
 | **RX**: app → device | `6e400002-b5a3-f393-e0a9-e50e24dcca9e` | Write (with response); Write Without Response optional |
 
-- The device sends messages as **notifications on TX**. The app enables notifications by writing the TX CCCD. Only send notifications while they are enabled.
-- The app writes commands to **RX**. When RX supports Write (with response), the app uses it. The app waits for each write to be acknowledged before it sends the next one.
-- Please also expose the standard **Device Information** service (`0x180A`: manufacturer, model number, firmware revision strings) and the **Battery** service (`0x180F`) if the hardware has a battery. The app reads them after connecting and shows them to the user. They are optional, but recommended.
-- **Advertising:** each device type should advertise a distinct, fixed local-name prefix (for example `MS-FLOW-…` or `MS-BIN-…`) so the app can list only the matching hardware. Please confirm the prefixes with the app team.
+Hardware with an off-the-shelf serial BLE module (JDY-23, HM-10 and similar) may use the module's transparent UART instead: service `0000ffe0-0000-1000-8000-00805f9b34fb`, one characteristic `0000ffe1-0000-1000-8000-00805f9b34fb` (Notify + Write) carrying both directions. Tell the app team which one your device uses.
 
-## 2. Framing
+- The app turns on notifications on TX after connecting. Only send while they are on.
+- The app writes to RX using Write with response when available, and waits for each write to be acknowledged before sending the next.
+- **Advertise a fixed name prefix per device type** (e.g. `MS-FLOW-…`, `MS-BIN-…`) so the app lists only matching hardware. Confirm prefixes with the app team.
+- Optional but recommended: the standard **Device Information** service (`0x180A`: manufacturer, model, firmware revision) and **Battery** service (`0x180F`). Serial modules usually can't provide these.
 
-Messages are **UTF-8 JSON, one message per line, each line terminated by `\n` (0x0A)** (newline-delimited JSON).
+## 2. Framing: one JSON object per line
 
-- A message may be split across any number of BLE packets, at any byte boundary. The receiver buffers bytes until it sees `\n`. This means the sender does not need to fit a message into one MTU.
-- Do not put a raw newline inside a message. Send compact JSON, not pretty-printed JSON.
-- `\r\n` line endings and blank lines are tolerated.
-- **Maximum line length: 4096 characters.** The app discards anything longer.
-- **The app sends commands in chunks of at most 20 bytes**, so it works with any MTU. The device must join the chunks until it sees `\n` and then parse the whole line.
+- Encode as **UTF-8 JSON**, compact (no pretty-printing, no raw newlines inside a message), and end every message with **`\n`**.
+- A message may be **split across any number of BLE packets**. The receiver collects bytes until it sees `\n`, so you don't have to fit a message into one MTU.
+- `\r\n` and blank lines are tolerated.
+- **Maximum line length: 4096 characters.** Longer lines are discarded.
+- A line that isn't valid JSON or doesn't follow this spec is ignored; the receiver just moves on to the next line.
 - When the connection drops, both sides throw away any partly received line.
-- If a line is not valid JSON or does not match this spec, the receiver ignores it and keeps reading the next line.
 
-## 3. Message envelope
+## 3. Device → app
 
-### Device → app
+### The envelope
 
-```json
-{"deviceId":"FM-000123","timestamp":1759400000000,"type":"reading","data":{"flowRate":12.5}}
-```
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `deviceId` | string, non-empty | The unit's unique hardware ID (for example the serial number). It must stay the same across reboots and firmware updates. |
-| `timestamp` | number | When the device produced the data, in **Unix epoch milliseconds** (UTC), taken from the **device's own clock**. |
-| `type` | string, non-empty | Which message this is. See section 5. |
-| `data` | object | The message's fields. See section 5. Always an object; use `{}` when there are no fields. |
-
-**The device is the source of truth for time.** The app is often offline and does not set or correct the device clock. It stores `timestamp` exactly as received. The device must keep its own clock (RTC) accurate. How it does that, for example setting it during commissioning, is up to the firmware.
-
-### App → device
+Every message from a device has exactly this shape:
 
 ```json
-{"timestamp":1759400000000,"type":"reset","data":{}}
+{
+  "deviceId": "device-serial-number",
+  "timestamp": 1759400000000,
+  "data": {
+    "field_name": "value"
+  }
+}
 ```
 
-The format is the same, but without `deviceId`, because the Bluetooth link already identifies the unit. Here `timestamp` is the phone's clock when the command was sent. It is informational only, and the device should not set its clock from it.
+Sent on the wire as one line:
 
-### Validation rules (applied by the app)
+```text
+{"deviceId":"FM-000123","timestamp":1759400000000,"data":{"flow_rate":12.5,"total_volume":1830}}\n
+```
 
-- All four envelope fields are required.
-- Messages with an unknown `type` are rejected, and every listed field is required and must have the listed type. The app checks its own outgoing commands the same way before sending them.
-- **Unknown extra fields are ignored.** New fields can be added to a message without breaking older app versions. Removing or renaming a field is a breaking change.
-- The device should handle commands the same way. If a command has an unknown `type` or invalid `data`, do not act on it. How to report the rejection to the app will be part of the data model. Ignore unknown extra fields.
-
-## 4. Field types
-
-| Spec type | JSON | Notes |
+| Key | Type | Rule |
 | --- | --- | --- |
-| `number` | number | Must be finite. No `NaN` or `Infinity`. Integers and decimals are both fine. |
-| `string` | string | |
-| `boolean` | `true` / `false` | Not `0`/`1`. |
-| `number[]`, `boolean[]`, `string[]` | array | Every element must have the given type. |
-| `"a" \| "b"` | string | Must be exactly one of the listed values. |
+| `deviceId` | string | **Required, non-empty.** The unit's unique hardware ID (e.g. serial number). Must stay the same across reboots and firmware updates. |
+| `timestamp` | number | **Required.** When the data was produced, in **Unix epoch milliseconds, UTC**. Send `0` if the device doesn't know the time yet; the app then uses the arrival time. |
+| `data` | object | **Required, always an object** (may be `{}`). Holds the device's fields, see below. |
 
-## 5. Device data models
+A message missing any of these keys, or with the wrong type, is **dropped entirely**.
 
-> **Placeholders.** The message types and fields below are proposals, not agreed with firmware yet. The app already validates strictly against them, so firmware that sends anything else will have its messages rejected until the models are agreed and this table is updated.
+**Time:** Notehub `req.time` is the source of truth. The app is often offline and never sets or corrects the device clock; it stores `timestamp` exactly as received. Keep the device clock synced to Notehub often enough that every message carries an accurate time.
 
-Field types are from section 4. `{}` means the message has no fields.
+### The `data` object: one generic shape, different fields per device
+
+The envelope is identical for every device. **`data` is what's device-specific.** It is a **flat object of `field_name: value` pairs**, where each device type has its own list of fields, each with one fixed type (section 6).
+
+Think of it as:
+
+```text
+data = { <field name>: <value of that field's type>, ... }
+```
+
+The app knows each device's field list and checks every message against it. Allowed field types:
+
+| Type in section 6 | JSON value | Example |
+| --- | --- | --- |
+| `number` | number, finite (no `NaN`/`Infinity`) | `"flow_rate": 12.5` |
+| `string` | string | `"serial_number": "SN-0042"` |
+| `boolean` | `true` / `false` (**not** `1`/`0`) | `"pump_1_enabled": true` |
+| `"a" \| "b" \| …` | string, exactly one of the listed values | `"alarm": "high"` |
+| `number[]`, `string[]`, `boolean[]` | array, every element of that type | `"samples": [1.2, 1.3]` |
+
+Rules:
+
+1. **Each field name has one fixed meaning and type.** There is no "message type". A message carries whichever fields you want to report right now: one, several or all.
+2. **The app keeps the latest value of each field.** So a periodic update and a reply to a command use the same field names, and you can split a large state across several messages in any order.
+3. **Keep `data` flat.** Use `snake_case` names with primitive values or simple arrays; no nested objects.
+4. **A known field with the wrong type rejects the whole message.** For example `"flow_rate": "12.5"` (a string) drops the message.
+5. **Unknown fields are ignored**, so you can add new fields without breaking older apps. Removing, renaming or changing the type of a field is a breaking change: agree it with the app team first.
+
+### Reserved fields: `error` and `cmd`
+
+Any device can use these in `data` to report a rejected command:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `error` | string | Short reason the command was rejected. Shown to the user. |
+| `cmd` | string | The action or setting name being answered. Include it with `error` whenever you recognised the command name. |
+
+```json
+{"deviceId":"FM-000123","timestamp":1759400000000,"data":{"error":"set_pump_cooldown_min out of range (min 30)","cmd":"set_pump_cooldown_min"}}
+```
+
+## 4. App → device
+
+### What the app sends
+
+The app only sends a command when the user presses a control; it sends nothing automatically on connect. Each command is **one JSON object with one key, on one line**. There are two kinds:
+
+**Actions**: no argument. The key is always `cmd`, and the value is the action name.
+
+```json
+{"cmd":"get_status"}
+```
+
+**Settings**: change a value. The key is the setting name, and the value is the new value, **always as a JSON string**.
+
+```json
+{"set_pump_cooldown_min":"60"}
+```
+
+Setting values are always strings so the firmware can parse every one the same way:
+
+| Setting type | Sent as | Parse with |
+| --- | --- | --- |
+| `number` | decimal text: `"60"`, `"15.5"`, `"-0.25"` | `toInt()` / `toFloat()` |
+| `boolean` | `"1"` or `"0"` | compare to `"1"` |
+| `string`, `"a" \| "b"` | the text itself | string compare |
+
+The app checks the value against the setting's type before sending, so you'll only get well-formed values. You still need to check **ranges** (e.g. minimums) yourself.
+
+### How the app delivers it
+
+- The line is sent in **chunks of at most 20 bytes**, so it works with any MTU. For example `{"set_bin_height":"6"}\n` arrives as `{"set_bin_height":"6` (20 bytes) then `"}\n`.
+- **Join the chunks until you see `\n`, then parse the whole line.** Never parse a single chunk.
+- Each chunk is written with acknowledgement; the next chunk is sent only after the previous one is acknowledged.
+
+### How the device must reply
+
+Reply to **every** command with a normal device → app message (section 3):
+
+| Command | Reply with |
+| --- | --- |
+| Action that reads (e.g. `get_status`) | The fields it reads. |
+| Action that changes something (e.g. `reset_total`) | The fields it changed, with their new values. |
+| Setting that was applied | The field holding the new value: `{"set_bin_height":"6"}` → `"data":{"bin_height":6}`. |
+| Rejected command (unknown name, bad or out-of-range value) | `error`, plus `cmd` if you recognised the name. Don't act on it. |
+
+### Naming
+
+Use `snake_case` everywhere. For new firmware:
+
+- Actions that read start with `get_` (`get_status`, `get_reading`).
+- A setting that changes field `x` is named `set_x`, and the reply contains field `x`.
+
+Existing firmware may keep its current names (see Dewater Pump Float Replacement).
+
+## 5. Example session
+
+Using the placeholder Bin Height Measurement model from section 6:
+
+```text
+app    connects, turns on notifications on TX
+device → {"deviceId":"BH-0007","timestamp":1759400001000,"data":{"height":2.4}}\n        periodic update
+app    → {"cmd":"get_reading"}\n                                                      action (sent in 20-byte chunks)
+device → {"deviceId":"BH-0007","timestamp":1759400003000,"data":{"height":2.41}}\n       reply
+app    → {"set_bin_height":"6"}\n                                                     setting
+device → {"deviceId":"BH-0007","timestamp":1759400005000,"data":{"bin_height":6}}\n      reply with new value
+app    → {"set_bin_height":"-1"}\n                                                    setting (out of range)
+device → {"deviceId":"BH-0007","timestamp":1759400006000,"data":{"error":"bin height must be positive","cmd":"set_bin_height"}}\n
+```
+
+## 6. Device data models
+
+Each table is the device's `data` field list (with types) and the commands it accepts.
+
+> **Placeholders**, except Dewater Pump Float Replacement. The app already validates strictly against them, so until a model is agreed and this document is updated, a declared field sent with another type will get its message rejected.
 
 ### Discharge Water Flow Monitor
 
-| Direction | `type` | `data` |
+| Kind | Name | Type / reply |
 | --- | --- | --- |
-| Device → app | `reading` | `flowRate`: number (L/min), `totalVolume`: number (L since last reset) |
-| App → device | `requestReading` | `{}` |
-| App → device | `resetTotal` | `{}` |
+| Field | `flow_rate` | number (L/min) |
+| Field | `total_volume` | number (L since last reset) |
+| Action | `get_reading` | replies `flow_rate`, `total_volume` |
+| Action | `reset_total` | replies `total_volume` |
 
 ### Dewater Water Level Monitor
 
-| Direction | `type` | `data` |
+| Kind | Name | Type / reply |
 | --- | --- | --- |
-| Device → app | `reading` | `waterLevel`: number (m) |
-| Device → app | `alarm` | `level`: `"high" \| "low" \| "normal"` |
-| App → device | `requestReading` | `{}` |
-| App → device | `setAlarmLevels` | `highLevel`: number (m), `lowLevel`: number (m) |
+| Field | `water_level` | number (m) |
+| Field | `alarm` | `"high" \| "low" \| "normal"` |
+| Field | `high_alarm_level`, `low_alarm_level` | number (m) |
+| Action | `get_reading` | replies `water_level`, `alarm` |
+| Setting | `set_high_alarm_level`, `set_low_alarm_level` | number (m); replies `high_alarm_level` / `low_alarm_level` |
 
 ### Dewater Pump Float Replacement
 
-| Direction | `type` | `data` |
+Agreed with `firmware/dewater-pump-float-replacement`. Uses a JDY-23 serial module (section 1). Levels are water heights in m: 20 m minus the radar's distance to the surface. `N` is the pump number, 1–6.
+
+| Kind | Name | Type / reply |
 | --- | --- | --- |
-| Device → app | `reading` | `waterLevel`: number (m), `pumpRunning`: boolean |
-| App → device | `requestReading` | `{}` |
-| App → device | `setPumpLevels` | `startLevel`: number (m), `stopLevel`: number (m) |
-| App → device | `setPumpMode` | `mode`: `"auto" \| "on" \| "off"` |
+| Field | `embedded_software_ver`, `category`, `product_uid`, `serial_number` | string |
+| Field | `ble_data_interval_s` | number (s), how often periodic data is sent |
+| Field | `current_water_level` | number (m) |
+| Field | `pump_cooldown_min` | number (min a pump rests after stopping) |
+| Field | `water_high_thr_m` | number (m), at or above it every enabled pump runs |
+| Field | `water_low_thr_m` | number (m), at or below it every pump stops with a fault |
+| Field | `pump_logic_mode` | `"normal" \| "alteration" \| "winter"` |
+| Field | `pump_N_enabled`, `pump_N_fault` | boolean |
+| Field | `pump_N_total_starts`, `pump_N_current_starts` | number (current = since the last reset) |
+| Field | `pump_N_high_thr`, `pump_N_low_thr` | number (m), where pump N starts / stops |
+| Field | `current_high_thr`, `current_low_thr` | number (12-bit ADC counts) |
+| Periodic | every `ble_data_interval_s` | `current_water_level`, `pump_N_total_starts`, `pump_N_current_starts` |
+| Action | `get_status` | `embedded_software_ver`, `category`, `product_uid`, `serial_number`, `ble_data_interval_s` |
+| Action | `get_config` | `category`, `product_uid`, `serial_number`, `ble_data_interval_s` |
+| Action | `get_pump_states` | three messages: `pump_N_enabled`/`fault`/`total_starts`/`current_starts`; `pump_N_high_thr`/`low_thr`; `current_water_level`, `pump_cooldown_min`, `water_high_thr_m`, `water_low_thr_m`, `pump_logic_mode` |
+| Action | `get_sample_period` | `ble_data_interval_s` |
+| Action | `reset_pump_count` | every `pump_N_current_starts` (0) |
+| Setting | `pump_logic_mode` | mode; replies `pump_logic_mode` |
+| Setting | `set_pump_cooldown_min` | number ≥ 30; replies `pump_cooldown_min` |
+| Setting | `ble_data_interval_s` | number 1–3600; replies `ble_data_interval_s` |
+| Setting | `set_water_high_thr_m`, `set_water_low_thr_m` | number (m); replies `water_high_thr_m` / `water_low_thr_m` |
+| Setting | `set_current_sens_high_thr`, `set_current_sens_low_thr` | number 0–4095; replies `current_high_thr` / `current_low_thr` |
+| Setting | `pump_N_set_enable` | boolean; replies `pump_N_enabled` |
+| Setting | `pump_N_set_high`, `pump_N_set_low` | number (m), high above low; replies `pump_N_high_thr` / `pump_N_low_thr` |
 
 ### Conveyor Volumetric Scale
 
-| Direction | `type` | `data` |
+| Kind | Name | Type / reply |
 | --- | --- | --- |
-| Device → app | `reading` | `volumeRate`: number (m³/h), `totalVolume`: number (m³ since last reset), `beltSpeed`: number (m/s) |
-| App → device | `requestReading` | `{}` |
-| App → device | `resetTotal` | `{}` |
+| Field | `volume_rate` | number (m³/h) |
+| Field | `total_volume` | number (m³ since last reset) |
+| Field | `belt_speed` | number (m/s) |
+| Action | `get_reading` | replies `volume_rate`, `total_volume`, `belt_speed` |
+| Action | `reset_total` | replies `total_volume` |
 
 ### Conveyor Volumetric Scale Pro
 
-| Direction | `type` | `data` |
+| Kind | Name | Type / reply |
 | --- | --- | --- |
-| Device → app | `reading` | `volumeRate`: number (m³/h), `totalVolume`: number (m³ since last reset), `massRate`: number (t/h), `beltSpeed`: number (m/s) |
-| App → device | `requestReading` | `{}` |
-| App → device | `resetTotal` | `{}` |
-| App → device | `setMaterialDensity` | `density`: number (t/m³) |
+| Field | `volume_rate` | number (m³/h) |
+| Field | `total_volume` | number (m³ since last reset) |
+| Field | `mass_rate` | number (t/h) |
+| Field | `belt_speed` | number (m/s) |
+| Field | `material_density` | number (t/m³) |
+| Action | `get_reading` | replies `volume_rate`, `total_volume`, `mass_rate`, `belt_speed` |
+| Action | `reset_total` | replies `total_volume` |
+| Setting | `set_material_density` | number (t/m³); replies `material_density` |
 
 ### Bin Height Measurement
 
-| Direction | `type` | `data` |
+| Kind | Name | Type / reply |
 | --- | --- | --- |
-| Device → app | `reading` | `height`: number (m, sensor to material surface) |
-| Device → app | `settings` | `binHeight`: number (m) |
-| App → device | `requestReading` | `{}` |
-| App → device | `setBinHeight` | `binHeight`: number (m) |
+| Field | `height` | number (m, sensor to material surface) |
+| Field | `bin_height` | number (m) |
+| Action | `get_reading` | replies `height` |
+| Setting | `set_bin_height` | number (m); replies `bin_height` |
 
-## 6. Example session
+## 7. Firmware checklist
 
-This uses the placeholder Bin Height Measurement model from section 5.
-
-```text
-app    connects, enables notifications on TX
-device → {"deviceId":"BH-0007","timestamp":1759400001000,"type":"reading","data":{"height":2.4}}\n
-app    → {"timestamp":1759400005000,"type":"setBinHeight","data":{"binHeight":6}}\n     (sent as 20-byte chunks)
-device → {"deviceId":"BH-0007","timestamp":1759400005020,"type":"settings","data":{"binHeight":6}}\n
-```
+- [ ] Advertises the agreed name prefix and exposes NUS (or the serial module's `ffe0`/`ffe1`).
+- [ ] Every outgoing message is compact JSON on one line, ending in `\n`, under 4096 characters.
+- [ ] Every outgoing message has `deviceId` (non-empty, stable), `timestamp` (epoch ms, or `0`) and `data` (an object).
+- [ ] `data` is flat, uses only the field names in section 6, and every value has the declared type (booleans as `true`/`false`).
+- [ ] Incoming bytes are buffered until `\n`; partial lines are dropped on disconnect.
+- [ ] Actions (`{"cmd":"…"}`) and settings (`{"name":"value"}`, value always a string) are both handled.
+- [ ] Every command gets a reply: the affected fields, or `error` (+ `cmd`).
+- [ ] Device clock is synced from Notehub `req.time`.
 
 ## For app developers
 
-This document mirrors [schema.ts](schema.ts) and the per-device command files in this folder. Those files are what the app actually validates against. When you change a command file, update this document in the same change.
+This document mirrors [schema.ts](schema.ts) and the per-device command files in this folder; those files are what the app actually validates against. When you change a command file, update this document in the same change.

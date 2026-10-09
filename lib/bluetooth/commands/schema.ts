@@ -1,31 +1,33 @@
 /*
- * Message format shared by all devices.
+ * Message format shared by all devices. The full spec for firmware developers is ./README.md.
  *
  * Wire format: UTF-8 JSON, one message per line, each line terminated by "\n" (NDJSON).
  * A line may be split across any number of BLE packets; the receiver buffers until "\n",
  * so neither side needs to care about the negotiated MTU.
  *
  * Device → app (notified on the messaging "fromDevice" characteristic):
- *   {"deviceId":"FM-000123","timestamp":1759400000000,"type":"reading","data":{...}}
- *
- * App → device (written to the messaging "toDevice" characteristic):
- *   {"timestamp":1759400000000,"type":"reset","data":{}}
+ *   {"deviceId":"FM-000123","timestamp":1759400000000,"data":{"flow_rate":12.5}}
  *
  * - deviceId:  the unit's unique hardware ID (e.g. serial number), stable across reboots.
- * - timestamp: Unix epoch milliseconds when the message was created, by the sender's clock.
- *              Device timestamps are the source of truth for when data was produced; the app
- *              keeps them as received and never sets the device clock.
- * - type:      which message this is; one of the names declared in that device's command file.
- * - data:      the message's payload, always an object (`{}` when there is nothing to send).
- *              Receivers ignore fields they don't know, so new fields can be added safely.
+ * - timestamp: Unix epoch milliseconds when the data was produced, by the device's clock.
+ *              0 means the device does not know the time yet; the app then uses the arrival time.
+ * - data:      any subset of the device's declared fields. The app keeps the latest value of each
+ *              field, so a field means the same thing in every message. Unknown fields are ignored.
+ *              `error` and `cmd` are reserved: a rejected command is reported as
+ *              {"error":"<why>","cmd":"<command or setting name>"}.
  *
- * App commands carry no deviceId because the Bluetooth link already addresses one unit.
+ * App → device (written to the messaging "toDevice" characteristic):
+ *   {"cmd":"get_reading"}       an action: a command with no argument
+ *   {"set_bin_height":"6.5"}    a setting: the key names it and the value is always a string
  */
 
 /** Type of one `data` field. An array of strings means "one of these values". */
 export type FieldType = "number" | "string" | "boolean" | "number[]" | "boolean[]" | "string[]" | readonly string[];
 
-type FieldValue<F extends FieldType> = F extends "number"
+/** Settings travel as a single string, so they can only hold a single value. */
+export type SettingType = "number" | "string" | "boolean" | readonly string[];
+
+export type FieldValue<F extends FieldType> = F extends "number"
   ? number
   : F extends "string"
     ? string
@@ -41,49 +43,54 @@ type FieldValue<F extends FieldType> = F extends "number"
               ? V
               : never;
 
-/** Field name → field type for one message's `data`. */
+/** Field name → field type. */
 export type DataSchema = Record<string, FieldType>;
 
-export type DataOf<S extends DataSchema> = { [F in keyof S]: FieldValue<S[F]> };
-
-/** Message `type` → schema of its `data`. */
-export type MessageSchemas = Record<string, DataSchema>;
-
-/** Every message a device can send and every command it accepts, by `type`. */
+/** Everything a device reports and every command it accepts. */
 export type CommandSet = {
-  fromDevice: MessageSchemas;
-  toDevice: MessageSchemas;
+  /** Every field the device may report in `data`. */
+  fields: DataSchema;
+  /** Commands with no argument, sent as {"cmd":"<action>"}. */
+  actions: readonly string[];
+  /** Values the app can set, sent as {"<setting>":"<value>"}. */
+  settings: Record<string, SettingType>;
 };
 
-type PayloadIn<M extends MessageSchemas, T extends keyof M> = M[T] extends DataSchema ? DataOf<M[T]> : never;
-
-export type MessageType<C extends CommandSet> = keyof C["fromDevice"] & string;
-export type CommandType<C extends CommandSet> = keyof C["toDevice"] & string;
-export type MessageData<C extends CommandSet, T extends MessageType<C>> = PayloadIn<C["fromDevice"], T>;
-export type CommandData<C extends CommandSet, T extends CommandType<C>> = PayloadIn<C["toDevice"], T>;
-
-/** A validated message from a device, narrowed by `type`. */
-export type DeviceMessage<C extends CommandSet, T extends MessageType<C> = MessageType<C>> = {
-  [M in T]: { deviceId: string; timestamp: number; type: M; data: MessageData<C, M> };
-}[T];
-
-/** A command from the app to a device, narrowed by `type`. */
-export type AppCommand<C extends CommandSet, T extends CommandType<C> = CommandType<C>> = {
-  [M in T]: { timestamp: number; type: M; data: CommandData<C, M> };
-}[T];
-
-/** Identity helper for one direction's schemas that keeps message types and field types as literals. */
-export function defineMessages<const M extends MessageSchemas>(messages: M): M {
-  return messages;
-}
-
-/** Identity helper that keeps message types and field types as literals. */
-export function defineCommands<const F extends MessageSchemas, const T extends MessageSchemas>(commands: {
-  fromDevice: F;
-  toDevice: T;
-}): { fromDevice: F; toDevice: T } {
+/** Identity helper that keeps names and field types as literals. */
+export function defineCommands<
+  const F extends DataSchema,
+  const A extends readonly string[],
+  const S extends Record<string, SettingType>,
+>(commands: { fields: F; actions: A; settings: S }): { fields: F; actions: A; settings: S } {
   return commands;
 }
+
+export type FieldName<C extends CommandSet> = keyof C["fields"] & string;
+export type ActionName<C extends CommandSet> = C["actions"][number];
+export type SettingName<C extends CommandSet> = keyof C["settings"] & string;
+export type SettingValue<C extends CommandSet, S extends SettingName<C>> = FieldValue<C["settings"][S]>;
+
+/** Fields reserved in every device's `data`. */
+export type ReservedFields = {
+  /** Why the device rejected a command. */
+  error?: string;
+  /** The action or setting a reply answers. */
+  cmd?: string;
+};
+
+/** The fields a device reported. Each one is present only if the device has sent it. */
+export type DeviceData<C extends CommandSet> = { [F in FieldName<C>]?: FieldValue<C["fields"][F]> };
+
+/** A validated message from a device. */
+export type DeviceMessage<C extends CommandSet> = {
+  deviceId: string;
+  /** Epoch ms. */
+  timestamp: number;
+  data: DeviceData<C> & ReservedFields;
+};
+
+/** A command the app sent, as remembered by the messenger. */
+export type SentCommand = { timestamp: number; name: string; value?: string | number | boolean };
 
 export class MessageFormatError extends Error {
   constructor(
@@ -109,32 +116,49 @@ export function parseDeviceMessage<C extends CommandSet>(commands: C, line: stri
   }
   if (!isObject(message)) return fail("Message is not a JSON object.");
 
-  const { deviceId, timestamp, type, data } = message;
+  const { deviceId, timestamp, data } = message;
   if (typeof deviceId !== "string" || deviceId === "") fail("`deviceId` must be a non-empty string.");
-  if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) fail("`timestamp` must be a number.");
-  const problem = checkPayload(commands.fromDevice, type, data);
-  if (problem) fail(problem);
-  return message as DeviceMessage<C>;
-}
-
-/** Serializes a command as one line, newline included. Throws `MessageFormatError` if it does not match. */
-export function formatAppCommand<C extends CommandSet>(commands: C, command: AppCommand<C>): string {
-  // Types already catch most mistakes; this also catches casts and values built from user input.
-  const problem = checkPayload(commands.toDevice, command.type, command.data);
-  if (problem) throw new MessageFormatError(problem, JSON.stringify(command));
-  return `${JSON.stringify({ timestamp: command.timestamp, type: command.type, data: command.data })}\n`;
-}
-
-/** Why `type` and `data` do not match the schemas, or null if they do. */
-function checkPayload(schemas: MessageSchemas, type: unknown, data: unknown): string | null {
-  if (typeof type !== "string" || type === "") return "`type` must be a non-empty string.";
-  if (!Object.hasOwn(schemas, type)) return `Unknown message type ${JSON.stringify(type)}.`;
-  if (!isObject(data)) return "`data` must be a JSON object.";
-
-  for (const [field, fieldType] of Object.entries(schemas[type])) {
-    if (!matches(data[field], fieldType)) return `\`data.${field}\` of "${type}" must be ${describe(fieldType)}.`;
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp < 0) {
+    fail("`timestamp` must be a number of epoch milliseconds, or 0.");
   }
-  return null;
+  if (!isObject(data)) return fail("`data` must be a JSON object.");
+
+  for (const [field, value] of Object.entries(data)) {
+    const type: FieldType | undefined =
+      field === "error" || field === "cmd" ? "string" : Object.hasOwn(commands.fields, field) ? commands.fields[field] : undefined;
+    // Unknown fields are ignored so firmware can add fields before the app knows them.
+    if (type !== undefined && !matches(value, type)) fail(`\`data.${field}\` must be ${describe(type)}.`);
+  }
+
+  return {
+    deviceId: deviceId as string,
+    timestamp: (timestamp as number) || Date.now(),
+    data: data as DeviceMessage<C>["data"],
+  };
+}
+
+/** Serializes an action as one line, newline included. Throws `MessageFormatError` if the device has no such action. */
+export function formatAction<C extends CommandSet>(commands: C, action: string): string {
+  if (!commands.actions.includes(action)) {
+    throw new MessageFormatError(`Unknown action ${JSON.stringify(action)}.`, action);
+  }
+  return `${JSON.stringify({ cmd: action })}\n`;
+}
+
+/**
+ * Serializes a setting as one line, newline included. Every value is sent as a string; booleans as "1" or "0".
+ * Throws `MessageFormatError` if the device has no such setting or the value does not match its type.
+ */
+export function formatSetting<C extends CommandSet>(commands: C, setting: string, value: unknown): string {
+  const fail = (reason: string): never => {
+    throw new MessageFormatError(reason, `${setting}=${String(value)}`);
+  };
+  if (!Object.hasOwn(commands.settings, setting)) fail(`Unknown setting ${JSON.stringify(setting)}.`);
+  // Types already catch most mistakes; this also catches casts and values built from user input.
+  const type = commands.settings[setting];
+  if (!matches(value, type)) fail(`${setting} must be ${describe(type)}.`);
+  const text = typeof value === "boolean" ? (value ? "1" : "0") : String(value);
+  return `${JSON.stringify({ [setting]: text })}\n`;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

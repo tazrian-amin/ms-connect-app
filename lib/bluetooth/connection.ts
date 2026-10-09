@@ -43,7 +43,9 @@ export class BluetoothConnection<K extends string = string> {
 
   #device: BluetoothDevice | null = null;
   #characteristics = new Map<K, BluetoothRemoteGATTCharacteristic>();
-  #listening = new WeakSet<BluetoothRemoteGATTCharacteristic>();
+  // Keys that resolve to each characteristic. Several keys can share one, e.g. a serial module's
+  // single characteristic carries both directions.
+  #keysOf = new WeakMap<BluetoothRemoteGATTCharacteristic, Set<K>>();
   #valueListeners = new Map<K, Set<ValueListener>>();
   #queue: Promise<unknown> = Promise.resolve();
 
@@ -220,15 +222,19 @@ export class BluetoothConnection<K extends string = string> {
     const ref = this.profile.characteristics[key];
     const service = await gatt.getPrimaryService(ref.service);
     const characteristic = await service.getCharacteristic(ref.characteristic);
-    // The browser may hand back the same object after a reconnect; attach the handler once.
-    if (!this.#listening.has(characteristic)) {
-      this.#listening.add(characteristic);
+    // The browser may hand back the same object after a reconnect, or for another key; attach the handler once.
+    let keys = this.#keysOf.get(characteristic);
+    if (!keys) {
+      const sharingKeys = new Set<K>();
+      keys = sharingKeys;
+      this.#keysOf.set(characteristic, keys);
       characteristic.addEventListener("characteristicvaluechanged", () => {
         const value = characteristic.value;
         if (!value) return;
-        this.#valueListeners.get(key)?.forEach((listener) => listener(value));
+        sharingKeys.forEach((sharingKey) => this.#valueListeners.get(sharingKey)?.forEach((listener) => listener(value)));
       });
     }
+    keys.add(key);
     this.#characteristics.set(key, characteristic);
     return characteristic;
   }

@@ -19,43 +19,39 @@ import TextField from "@mui/material/TextField";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
-import type { CommandData, CommandSet, CommandType, FieldType } from "@/lib/bluetooth/commands/schema";
-import { useConnectionState, useLastSentCommand } from "@/lib/bluetooth/hooks";
+import type {
+  ActionName,
+  CommandSet,
+  SettingName,
+  SettingType,
+  SettingValue,
+} from "@/lib/bluetooth/commands/schema";
+import { useConnectionState, useDeviceMessages, useLastSent } from "@/lib/bluetooth/hooks";
 import type { DeviceMessenger } from "@/lib/bluetooth/messaging";
 import { useEditMode } from "@/lib/edit-mode";
 
 type FieldValue = string | number | boolean;
 
-export type CommandFieldConfig = {
-  label: string;
-  unit?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  /** Display labels for a field that is one of a fixed set of values, keyed by value. */
-  optionLabels?: Record<string, string>;
-};
-
-/** Commands whose `data` has no fields, i.e. ones a plain button can send. */
-type FieldlessCommandType<C extends CommandSet> = {
-  [T in CommandType<C>]: keyof C["toDevice"][T] extends never ? T : never;
-}[CommandType<C>];
-
 /**
- * Sends commands for one control, tracking whether a send is in flight and why the last one failed.
+ * Sends one action or setting, tracking whether a send is in flight and why the last one failed,
+ * including a rejection the device reports back for it.
  * `enabled` is false unless the device is connected and, for controls that change the device, edit mode is on.
  */
-function useCommandSender<C extends CommandSet>(messenger: DeviceMessenger<C>, requiresEditMode = true) {
+function useCommandSender<C extends CommandSet>(messenger: DeviceMessenger<C>, name: string, requiresEditMode = true) {
   const { status } = useConnectionState(messenger.connection);
   const editing = useEditMode(messenger.connection);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function send<T extends CommandType<C>>(type: T, data: CommandData<C, T>): Promise<boolean> {
+  useDeviceMessages(messenger, ({ data }) => {
+    if (data.error !== undefined && data.cmd === name) setError(`The device rejected this: ${data.error}`);
+  });
+
+  async function send(write: () => Promise<void>): Promise<boolean> {
     setPending(true);
     setError(null);
     try {
-      await messenger.send(type, data);
+      await write();
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The device did not accept the command.");
@@ -68,60 +64,62 @@ function useCommandSender<C extends CommandSet>(messenger: DeviceMessenger<C>, r
   return { send, pending, error, setError, enabled: status === "connected" && (editing || !requiresEditMode) };
 }
 
-type CommandFormProps<C extends CommandSet, T extends CommandType<C>> = {
+type SettingFormProps<C extends CommandSet, S extends SettingName<C>> = {
   messenger: DeviceMessenger<C>;
-  command: T;
+  setting: S;
   title: string;
   description?: string;
-  /** Label and input options for each field of the command's `data`. */
-  fields: { [F in keyof CommandData<C, T>]: CommandFieldConfig };
+  label: string;
+  unit?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  /** Display labels for a setting that is one of a fixed set of values, keyed by value. */
+  optionLabels?: Record<string, string>;
   /**
-   * Values the device reports as current, e.g. from a settings message. When omitted, the values
-   * last sent from this app during the current connection are shown instead.
+   * The value the device reports as current. When omitted or not yet reported, the value last
+   * sent from this app during the current connection is shown instead.
    */
-  reported?: CommandData<C, T> | null;
+  reported?: SettingValue<C, S> | null;
   submitLabel?: string;
 };
 
+type InputConfig = Pick<SettingFormProps<CommandSet, string>, "label" | "unit" | "min" | "max" | "step" | "optionLabels">;
+
 /**
- * Form that sends one command with fields, built from the command's schema: numbers and text get
- * a text field, booleans a switch, and one-of-a-set values a toggle group. Shows the current values.
+ * Form that sends one setting, built from its type: numbers and text get a text field, booleans a
+ * switch, and one-of-a-set values a toggle group. Shows the current value.
  */
-export function CommandForm<C extends CommandSet, T extends CommandType<C>>({
+export function SettingForm<C extends CommandSet, S extends SettingName<C>>({
   messenger,
-  command,
+  setting,
   title,
   description,
-  fields,
   reported,
   submitLabel = "Apply",
-}: CommandFormProps<C, T>) {
-  const { send, pending, error, setError, enabled } = useCommandSender(messenger);
-  const lastSent = useLastSentCommand(messenger, command);
-  // Only what the user has changed; everything else shows the current value.
-  const [draft, setDraft] = useState<Record<string, FieldValue>>({});
-  // Unapplied changes are dropped when the form is disabled, e.g. when edit mode is turned off.
+  ...config
+}: SettingFormProps<C, S>) {
+  const { send, pending, error, setError, enabled } = useCommandSender(messenger, setting);
+  const lastSent = useLastSent(messenger, setting);
+  // Only what the user has changed; otherwise the current value is shown.
+  const [draft, setDraft] = useState<FieldValue | null>(null);
+  // An unapplied change is dropped when the form is disabled, e.g. when edit mode is turned off.
   const [draftEnabled, setDraftEnabled] = useState(enabled);
   if (draftEnabled !== enabled) {
     setDraftEnabled(enabled);
-    setDraft({});
+    setDraft(null);
     setError(null);
   }
 
-  const schema = messenger.commands.toDevice[command];
-  const configs = fields as Record<string, CommandFieldConfig>;
-  const current = (reported ?? lastSent?.data ?? null) as Record<string, FieldValue> | null;
-  const valueOf = (field: string): FieldValue => draft[field] ?? current?.[field] ?? defaultValue(schema[field]);
+  const type = messenger.commands.settings[setting];
+  const current = (reported ?? lastSent?.value ?? null) as FieldValue | null;
+  const value = draft ?? current ?? defaultValue(type);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const data: Record<string, unknown> = {};
-    for (const [field, type] of Object.entries(schema)) {
-      const parsed = parseField(valueOf(field), type, configs[field]);
-      if (typeof parsed === "object" && "problem" in parsed) return setError(parsed.problem);
-      data[field] = parsed;
-    }
-    if (await send(command, data as CommandData<C, T>)) setDraft({});
+    const parsed = parseValue(value, type, config);
+    if (typeof parsed === "object") return setError(parsed.problem);
+    if (await send(() => messenger.sendSetting(setting, parsed as SettingValue<C, S>))) setDraft(null);
   }
 
   return (
@@ -134,24 +132,21 @@ export function CommandForm<C extends CommandSet, T extends CommandType<C>>({
           {description}
         </Typography>
       )}
-      <CurrentValues
-        current={current}
-        source={reported ? "Reported by the device" : "Last set from this app"}
-        configs={configs}
-      />
+      <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 1 }}>
+        {current === null
+          ? "Not reported since connecting."
+          : `${reported != null ? "Reported by the device" : "Last set from this app"}: ${formatValue(current, config)}`}
+      </Typography>
 
-      <Stack spacing={2} sx={{ mt: 2 }}>
-        {Object.entries(schema).map(([field, type]) => (
-          <FieldInput
-            key={field}
-            type={type}
-            config={configs[field]}
-            value={valueOf(field)}
-            disabled={!enabled || pending}
-            onChange={(value) => setDraft((previous) => ({ ...previous, [field]: value }))}
-          />
-        ))}
-      </Stack>
+      <Box sx={{ mt: 2 }}>
+        <ValueInput
+          type={type}
+          config={config}
+          value={value}
+          disabled={!enabled || pending}
+          onChange={setDraft}
+        />
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError(null)}>
@@ -173,41 +168,15 @@ export function CommandForm<C extends CommandSet, T extends CommandType<C>>({
   );
 }
 
-function CurrentValues({
-  current,
-  source,
-  configs,
-}: {
-  current: Record<string, FieldValue> | null;
-  source: string;
-  configs: Record<string, CommandFieldConfig>;
-}) {
-  if (!current) {
-    return (
-      <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 1 }}>
-        Not set since connecting.
-      </Typography>
-    );
-  }
-  const shown = Object.entries(configs)
-    .filter(([field]) => current[field] !== undefined)
-    .map(([field, config]) => `${config.label}: ${formatValue(current[field], config)}`);
-  return (
-    <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 1 }}>
-      {source}: {shown.join(" · ")}
-    </Typography>
-  );
-}
-
-function FieldInput({
+function ValueInput({
   type,
   config,
   value,
   disabled,
   onChange,
 }: {
-  type: FieldType;
-  config: CommandFieldConfig;
+  type: SettingType;
+  config: InputConfig;
   value: FieldValue;
   disabled: boolean;
   onChange: (value: FieldValue) => void;
@@ -246,7 +215,6 @@ function FieldInput({
     );
   }
 
-  // Arrays are entered comma-separated.
   return (
     <TextField
       label={config.label}
@@ -255,7 +223,6 @@ function FieldInput({
       value={String(value)}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
-      helperText={type.endsWith("[]") ? "Separate values with commas" : undefined}
       slotProps={{
         htmlInput: { min: config.min, max: config.max, step: config.step ?? "any" },
         input: config.unit ? { endAdornment: <InputAdornment position="end">{config.unit}</InputAdornment> } : {},
@@ -264,79 +231,60 @@ function FieldInput({
   );
 }
 
-function defaultValue(type: FieldType): FieldValue {
+function defaultValue(type: SettingType): FieldValue {
   if (typeof type !== "string") return type[0];
   return type === "boolean" ? false : "";
 }
 
-/** Converts what the user entered to the field's type, or explains why it cannot be. */
-function parseField(
-  value: FieldValue,
-  type: FieldType,
-  config: CommandFieldConfig,
-): FieldValue | string[] | number[] | boolean[] | { problem: string } {
-  if (typeof type !== "string" || type === "boolean") return value;
+/** Converts what the user entered to the setting's type, or explains why it cannot be. */
+function parseValue(value: FieldValue, type: SettingType, config: InputConfig): FieldValue | { problem: string } {
+  if (type !== "number") return typeof value === "string" ? value.trim() : value;
   const text = String(value).trim();
-  if (type === "string") return text;
-  if (type === "string[]") return text.split(",").map((item) => item.trim());
-  if (type === "boolean[]") return text.split(",").map((item) => item.trim() === "true");
-
-  const parseNumber = (item: string): number | { problem: string } => {
-    const number = Number(item);
-    if (item === "" || !Number.isFinite(number)) return { problem: `Enter a number for ${config.label}.` };
-    if (config.min !== undefined && number < config.min)
-      return { problem: `${config.label} must be at least ${formatValue(config.min, config)}.` };
-    if (config.max !== undefined && number > config.max)
-      return { problem: `${config.label} must be at most ${formatValue(config.max, config)}.` };
-    return number;
-  };
-  if (type === "number") return parseNumber(text);
-
-  const numbers: number[] = [];
-  for (const item of text.split(",")) {
-    const parsed = parseNumber(item.trim());
-    if (typeof parsed === "object") return parsed;
-    numbers.push(parsed);
-  }
-  return numbers;
+  const number = Number(text);
+  if (text === "" || !Number.isFinite(number)) return { problem: `Enter a number for ${config.label}.` };
+  if (config.min !== undefined && number < config.min)
+    return { problem: `${config.label} must be at least ${formatValue(config.min, config)}.` };
+  if (config.max !== undefined && number > config.max)
+    return { problem: `${config.label} must be at most ${formatValue(config.max, config)}.` };
+  return number;
 }
 
-function formatValue(value: unknown, config: CommandFieldConfig): string {
+function formatValue(value: FieldValue, config: InputConfig): string {
   if (typeof value === "boolean") return value ? "On" : "Off";
   const text = (typeof value === "string" && config.optionLabels?.[value]) || String(value);
   return config.unit ? `${text} ${config.unit}` : text;
 }
 
-type CommandButtonProps<C extends CommandSet, T extends FieldlessCommandType<C>> = {
+type ActionButtonProps<C extends CommandSet> = {
   messenger: DeviceMessenger<C>;
-  command: T;
+  action: ActionName<C>;
   label: string;
   icon?: ReactNode;
   variant?: "text" | "outlined" | "contained";
   color?: "primary" | "inherit" | "error" | "warning";
   /** Asks the user to confirm with this text before sending, for commands that cannot be undone. */
   confirm?: string;
-  /** False for commands that do not change the device, e.g. requesting a reading, so they work outside edit mode. */
+  /** False for actions that do not change the device, e.g. requesting a reading, so they work outside edit mode. */
   requiresEditMode?: boolean;
 };
 
-/** Button that sends a command with no fields, e.g. a reset or a request for a fresh reading. */
-export function CommandButton<C extends CommandSet, T extends FieldlessCommandType<C>>({
+/** Button that sends an action, e.g. a reset or a request for a fresh reading. */
+export function ActionButton<C extends CommandSet>({
   messenger,
-  command,
+  action,
   label,
   icon,
   variant = "outlined",
   color = "primary",
   confirm,
   requiresEditMode = true,
-}: CommandButtonProps<C, T>) {
-  const { send, pending, error, setError, enabled } = useCommandSender(messenger, requiresEditMode);
+}: ActionButtonProps<C>) {
+  const { send, pending, error, setError, enabled } = useCommandSender(messenger, action, requiresEditMode);
   const [confirming, setConfirming] = useState(false);
 
   const sendCommand = () => {
     setConfirming(false);
-    void send(command, {} as CommandData<C, T>);
+    void send(() => messenger.sendAction(action));
   };
 
   return (

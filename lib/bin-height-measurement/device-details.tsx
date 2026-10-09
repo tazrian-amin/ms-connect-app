@@ -3,7 +3,7 @@
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { CommandButton, CommandForm } from "@/components/device-details/command-controls";
+import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
 import { ControlSection } from "@/components/device-details/control-section";
 import { DashboardSection } from "@/components/device-details/dashboard-section";
 import { DashboardWidget, StatWidget } from "@/components/device-details/dashboard-widgets";
@@ -11,18 +11,17 @@ import { DeviceDetailsLayout } from "@/components/device-details/device-details-
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
 import { binHeightMeasurementCommands } from "@/lib/bluetooth/commands/bin-height-measurement";
-import { useLastSentCommand, useLatestMessage } from "@/lib/bluetooth/hooks";
+import { useDeviceState, useLastSent } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { binHeightMeasurementProfile } from "./bluetooth-profile";
 
 export function BinHeightMeasurementDetails() {
   const messenger = getMessenger(binHeightMeasurementProfile, binHeightMeasurementCommands);
-  const reading = useLatestMessage(messenger, "reading");
-  const settings = useLatestMessage(messenger, "settings");
-  const lastSent = useLastSentCommand(messenger, "setBinHeight");
+  const { data, updatedAt } = useDeviceState(messenger);
+  const lastSent = useLastSent(messenger, "set_bin_height");
 
-  const binHeight = settings?.data.binHeight ?? lastSent?.data.binHeight ?? null;
-  const height = reading?.data.height ?? null;
+  const binHeight = data.bin_height ?? (lastSent?.value as number | undefined) ?? null;
+  const height = data.height ?? null;
   const fill = binHeight && height !== null ? Math.min(Math.max((1 - height / binHeight) * 100, 0), 100) : null;
 
   return (
@@ -30,23 +29,25 @@ export function BinHeightMeasurementDetails() {
       slug="bin-height-measurement"
       controls={
         <ControlSection>
-          <CommandForm
+          <SettingForm
             messenger={messenger}
-            command="setBinHeight"
+            setting="set_bin_height"
             title="Bin height"
             description="Distance from the sensor to the bottom of the empty bin."
-            fields={{ binHeight: { label: "Bin height", unit: "m", min: 0 } }}
-            reported={settings?.data}
+            label="Bin height"
+            unit="m"
+            min={0}
+            reported={data.bin_height}
           />
         </ControlSection>
       }
       dashboard={
         <DashboardSection
-          updatedAt={reading?.timestamp}
+          updatedAt={updatedAt}
           action={
-            <CommandButton
+            <ActionButton
               messenger={messenger}
-              command="requestReading"
+              action="get_reading"
               label="Refresh"
               icon={<RefreshIcon />}
               requiresEditMode={false}

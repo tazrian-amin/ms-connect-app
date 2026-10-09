@@ -11,13 +11,15 @@ type DeviceDetailsLayoutProps = {
   dashboard: ReactNode;
   /** A `TelemetrySection`. */
   telemetry: ReactNode;
+  /** Shown last, e.g. a `MessageLog` while bringing up new firmware. */
+  diagnostics?: ReactNode;
 };
 
 /**
  * The four sections of every device details page, in the same order for each device. Each one
  * takes the full width so it has room for its own sub-sections.
  */
-export function DeviceDetailsLayout({ slug, controls, dashboard, telemetry }: DeviceDetailsLayoutProps) {
+export function DeviceDetailsLayout({ slug, controls, dashboard, telemetry, diagnostics }: DeviceDetailsLayoutProps) {
   return (
     <>
       <Stack spacing={3}>
@@ -25,6 +27,7 @@ export function DeviceDetailsLayout({ slug, controls, dashboard, telemetry }: De
         {controls}
         {dashboard}
         {telemetry}
+        {diagnostics}
       </Stack>
       <EditModeGuard />
     </>

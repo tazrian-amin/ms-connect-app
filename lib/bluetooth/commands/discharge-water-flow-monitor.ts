@@ -1,26 +1,15 @@
-import { defineCommands, defineMessages, type AppCommand, type DeviceMessage } from "./schema";
+import { defineCommands, type DeviceData } from "./schema";
 
-// TODO: Placeholder data model. Replace these message types and fields with the ones agreed with
+// TODO: Placeholder data model. Replace these fields, actions and settings with the ones agreed with
 // firmware. Incoming and outgoing data are already checked strictly against what is declared here.
 
-/** Messages the device sends to the app. */
-export const dischargeWaterFlowMonitorIncomingData = defineMessages({
-  reading: {
-    flowRate: "number", // L/min
-    totalVolume: "number", // L since last reset
-  },
-});
-
-/** Commands the app sends to the device. */
-export const dischargeWaterFlowMonitorOutgoingData = defineMessages({
-  requestReading: {},
-  resetTotal: {},
-});
-
 export const dischargeWaterFlowMonitorCommands = defineCommands({
-  fromDevice: dischargeWaterFlowMonitorIncomingData,
-  toDevice: dischargeWaterFlowMonitorOutgoingData,
+  fields: {
+    flow_rate: "number", // L/min
+    total_volume: "number", // L since last reset
+  },
+  actions: ["get_reading", "reset_total"],
+  settings: {},
 });
 
-export type DischargeWaterFlowMonitorMessage = DeviceMessage<typeof dischargeWaterFlowMonitorCommands>;
-export type DischargeWaterFlowMonitorCommand = AppCommand<typeof dischargeWaterFlowMonitorCommands>;
+export type DischargeWaterFlowMonitorData = DeviceData<typeof dischargeWaterFlowMonitorCommands>;

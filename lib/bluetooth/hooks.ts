@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useState, useSyncExternalStore } from "react";
-import type { AppCommand, CommandSet, CommandType, DeviceMessage, MessageType } from "./commands/schema";
+import type { ActionName, CommandSet, DeviceMessage, SentCommand, SettingName } from "./commands/schema";
 import { initialConnectionState, type BluetoothConnection, type ConnectionState } from "./connection";
-import type { DeviceMessenger } from "./messaging";
+import type { DeviceMessenger, DeviceState } from "./messaging";
 import type { DeviceProfile } from "./profile";
 import { getConnection } from "./registry";
 
@@ -73,30 +73,21 @@ export function useDeviceMessages<C extends CommandSet>(
   useEffect(() => messenger.subscribe((message) => handleMessage(message)), [messenger]);
 }
 
-/** Latest message of one type from the device, or null until it sends one. */
-export function useLatestMessage<C extends CommandSet, T extends MessageType<C>>(
-  messenger: DeviceMessenger<C>,
-  type: T,
-): DeviceMessage<C, T> | null {
-  const [message, setMessage] = useState<DeviceMessage<C, T> | null>(null);
-  useEffect(
-    () =>
-      messenger.subscribe((received) => {
-        if (received.type === type) setMessage(received as DeviceMessage<C, T>);
-      }),
-    [messenger, type],
-  );
-  return message;
+/** Every field the device has reported during the current link, latest value of each. */
+export function useDeviceState<C extends CommandSet>(messenger: DeviceMessenger<C>): DeviceState<C> {
+  return useSyncExternalStore(messenger.subscribeState, messenger.getState, () => emptyServerState);
 }
 
-/** Last command of one type sent to the device during the current link, or null. */
-export function useLastSentCommand<C extends CommandSet, T extends CommandType<C>>(
+const emptyServerState = { deviceId: null, data: {}, updatedAt: null };
+
+/** Last action or setting of this name sent to the device during the current link, or null. */
+export function useLastSent<C extends CommandSet>(
   messenger: DeviceMessenger<C>,
-  type: T,
-): AppCommand<C, T> | null {
+  name: ActionName<C> | SettingName<C>,
+): SentCommand | null {
   return useSyncExternalStore(
     messenger.subscribeSent,
-    () => messenger.getLastSent(type),
+    () => messenger.getLastSent(name),
     () => null,
   );
 }

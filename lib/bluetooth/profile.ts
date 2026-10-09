@@ -53,3 +53,15 @@ export const messagingCharacteristics = {
 } satisfies Record<string, CharacteristicRef>;
 
 export type MessagingCharacteristic = keyof typeof messagingCharacteristics;
+
+// Firmware that uses an off-the-shelf serial BLE module (JDY-23, HM-10, CC254x clones) instead of
+// its own BLE stack. These modules bridge one characteristic to the MCU's UART in both directions:
+// the device notifies on it and the app writes to it.
+export const serialModuleService: BluetoothServiceUUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
+
+const serialModuleCharacteristic = { service: serialModuleService, characteristic: "0000ffe1-0000-1000-8000-00805f9b34fb" };
+
+export const serialModuleMessagingCharacteristics = {
+  fromDevice: serialModuleCharacteristic,
+  toDevice: serialModuleCharacteristic,
+} satisfies Record<MessagingCharacteristic, CharacteristicRef>;
