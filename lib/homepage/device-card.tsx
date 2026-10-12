@@ -6,13 +6,13 @@ import CardActionArea from "@mui/material/CardActionArea";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ConnectionStatusChip } from "@/components/bluetooth/connection-status-chip";
-import { useDeviceConnection } from "@/lib/bluetooth/hooks";
+import { useProfileStatus } from "@/lib/bluetooth/hooks";
 import { deviceProfiles } from "@/lib/bluetooth/registry";
 import { DeviceIconTile } from "./device-icon-tile";
 import type { Device } from "./devices";
 
 export function DeviceCard({ device }: { device: Device }) {
-  const { status } = useDeviceConnection(deviceProfiles[device.slug]);
+  const status = useProfileStatus(deviceProfiles[device.slug]);
 
   return (
     <Card

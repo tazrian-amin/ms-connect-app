@@ -1,9 +1,14 @@
 import { useEffect, useEffectEvent, useState, useSyncExternalStore } from "react";
 import type { ActionName, CommandSet, DeviceMessage, SentCommand, SettingName } from "./commands/schema";
-import { initialConnectionState, type BluetoothConnection, type ConnectionState } from "./connection";
+import {
+  initialConnectionState,
+  type BluetoothConnection,
+  type ConnectionState,
+  type ConnectionStatus,
+} from "./connection";
 import type { DeviceMessenger, DeviceState } from "./messaging";
 import type { DeviceProfile } from "./profile";
-import { getConnection } from "./registry";
+import { getConnection, getProfileStatus, subscribeDeviceActivity } from "./registry";
 
 export type BluetoothSupport =
   | "checking"
@@ -50,6 +55,15 @@ export function useDeviceConnection<K extends string>(
 ): ConnectionState & { connection: BluetoothConnection<K> } {
   const connection = getConnection(profile);
   return { ...useConnectionState(connection), connection };
+}
+
+/** The most active status among all of a profile's connections, for device types with several links. */
+export function useProfileStatus(profile: DeviceProfile): ConnectionStatus {
+  return useSyncExternalStore(
+    subscribeDeviceActivity,
+    () => getProfileStatus(profile),
+    () => "disconnected",
+  );
 }
 
 /** Live state of a connection you already hold, e.g. `messenger.connection`. */

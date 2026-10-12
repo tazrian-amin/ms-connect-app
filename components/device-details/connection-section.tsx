@@ -9,9 +9,10 @@ import BluetoothIcon from "@mui/icons-material/Bluetooth";
 import BluetoothDisabledIcon from "@mui/icons-material/BluetoothDisabled";
 import EditIcon from "@mui/icons-material/Edit";
 import EditOffIcon from "@mui/icons-material/EditOff";
-import { useBluetoothSupport, useDeviceConnection, type BluetoothSupport } from "@/lib/bluetooth/hooks";
-import type { DeviceProfile, StandardCharacteristic } from "@/lib/bluetooth/profile";
-import { deviceProfiles } from "@/lib/bluetooth/registry";
+import type { BluetoothConnection } from "@/lib/bluetooth/connection";
+import { useBluetoothSupport, useConnectionState, type BluetoothSupport } from "@/lib/bluetooth/hooks";
+import type { StandardCharacteristic } from "@/lib/bluetooth/profile";
+import { deviceProfiles, getConnection } from "@/lib/bluetooth/registry";
 import { disableEditMode, enableEditMode, useEditMode, warnEditMode } from "@/lib/edit-mode";
 import { ConnectionStatusChip } from "@/components/bluetooth/connection-status-chip";
 import { DeviceInfo } from "@/components/bluetooth/device-info";
@@ -24,15 +25,23 @@ const supportMessages: Partial<Record<BluetoothSupport, string>> = {
   unavailable: "Bluetooth looks switched off or unavailable on this device. Turn it on and try again.",
 };
 
+type ConnectionSectionProps = {
+  slug: string;
+  /** The link to show, for a device type with several; otherwise the device's only one. */
+  connection?: BluetoothConnection;
+};
+
 /** Section 1 of a device details page: Bluetooth connection, then device information once connected. */
-export function ConnectionSection({ slug }: { slug: string }) {
+export function ConnectionSection({ slug, connection }: ConnectionSectionProps) {
   const profile = deviceProfiles[slug];
-  return profile ? <ConnectionCard profile={profile} /> : null;
+  const shown = connection ?? (profile && getConnection(profile));
+  // Every device's profile includes the standard characteristics (see `deviceProfiles`).
+  return shown ? <ConnectionCard connection={shown as BluetoothConnection<StandardCharacteristic>} /> : null;
 }
 
-function ConnectionCard({ profile }: { profile: DeviceProfile<StandardCharacteristic> }) {
+function ConnectionCard({ connection }: { connection: BluetoothConnection<StandardCharacteristic> }) {
   const support = useBluetoothSupport();
-  const { connection, status, deviceName, error } = useDeviceConnection(profile);
+  const { status, deviceName, error } = useConnectionState(connection);
 
   const supportMessage = supportMessages[support];
   const busy = status === "requesting" || status === "connecting";

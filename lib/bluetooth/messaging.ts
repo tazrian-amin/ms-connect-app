@@ -14,7 +14,7 @@ import {
 } from "./commands/schema";
 import type { BluetoothConnection } from "./connection";
 import type { DeviceProfile, MessagingCharacteristic } from "./profile";
-import { getConnection } from "./registry";
+import { getConnection, type ConnectionInstance } from "./registry";
 
 // A line this long without a "\n" means the stream is out of sync; drop it rather than grow forever.
 const MAX_LINE_LENGTH = 4_096;
@@ -224,12 +224,16 @@ export class DeviceMessenger<C extends CommandSet> {
 // Values are DeviceMessenger<C> for whichever command set the device was first asked with.
 const messengers = new WeakMap<BluetoothConnection, object>();
 
-/** Returns the shared messenger for a device, e.g. `getMessenger(binHeightMeasurementProfile, binHeightMeasurementCommands)`. */
+/**
+ * Returns the shared messenger for a device, e.g. `getMessenger(binHeightMeasurementProfile, binHeightMeasurementCommands)`,
+ * or for one instance of it when a device type links to several pieces of hardware.
+ */
 export function getMessenger<C extends CommandSet>(
   profile: DeviceProfile<MessagingCharacteristic>,
   commands: C,
+  instance?: ConnectionInstance,
 ): DeviceMessenger<C> {
-  const connection = getConnection(profile);
+  const connection = getConnection(profile, instance);
   let messenger = messengers.get(connection) as DeviceMessenger<C> | undefined;
   if (!messenger) {
     messenger = new DeviceMessenger(connection, commands);

@@ -10,7 +10,7 @@ import type { BluetoothConnection } from "@/lib/bluetooth/connection";
  */
 
 /** What the user tried to do while edit mode was on. */
-export type EditModeWarning = "navigate" | "disconnect";
+export type EditModeWarning = "navigate" | "disconnect" | "switch";
 
 let editing: BluetoothConnection | null = null;
 let warning: EditModeWarning | null = null;

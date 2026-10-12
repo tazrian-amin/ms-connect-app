@@ -19,6 +19,7 @@ import {
 const warningTexts: Record<EditModeWarning, string> = {
   navigate: "Edit mode needs to be disabled before you leave this page.",
   disconnect: "Edit mode needs to be disabled before you disconnect the device.",
+  switch: "Edit mode needs to be disabled before you switch, add or remove tabs.",
 };
 
 // Marks the extra history entry that catches the browser's back button.
