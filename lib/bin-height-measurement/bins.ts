@@ -59,15 +59,36 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** Adds a bin named after the next free number, e.g. "Bin 3", and returns it. */
-export function addBin(): Bin {
+export const BIN_NAME_MAX_LENGTH = 40;
+
+/** The next free numbered name, e.g. "Bin 3", to suggest for a new bin. */
+export function suggestBinName(): string {
   const current = getBins();
-  const taken = new Set(current.map((bin) => bin.name));
   let number = current.length + 1;
-  while (taken.has(`Bin ${number}`)) number++;
+  while (findBinByName(`Bin ${number}`)) number++;
+  return `Bin ${number}`;
+}
+
+/** Why `name` can't be given to a new bin, or null if it can. */
+export function validateBinName(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return "Enter a name.";
+  if (trimmed.length > BIN_NAME_MAX_LENGTH) return `Use at most ${BIN_NAME_MAX_LENGTH} characters.`;
+  if (findBinByName(trimmed)) return "Another bin already has this name.";
+  return null;
+}
+
+function findBinByName(name: string): Bin | undefined {
+  const wanted = name.trim().toLowerCase();
+  return getBins().find((bin) => bin.name.toLowerCase() === wanted);
+}
+
+/** Adds a bin with the given name (see `validateBinName`) and returns it. */
+export function addBin(name: string): Bin {
   // Not crypto.randomUUID(), which is missing over plain HTTP.
-  const bin = { id: `bin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, name: `Bin ${number}` };
-  setBins([...current, bin]);
+  const id = `bin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const bin = { id, name: name.trim() };
+  setBins([...getBins(), bin]);
   return bin;
 }
 

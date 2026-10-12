@@ -15,7 +15,6 @@ import { TelemetrySection } from "@/components/device-details/telemetry-section"
 import { binHeightMeasurementCommands } from "@/lib/bluetooth/commands/bin-height-measurement";
 import { useDeviceState, useLastSent } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
-import { useAnyEditMode, warnEditMode } from "@/lib/edit-mode";
 import { BinTabs } from "./bin-tabs";
 import { addBin, removeBin, useBins, type Bin } from "./bins";
 import { binHeightMeasurementProfile } from "./bluetooth-profile";
@@ -25,13 +24,6 @@ export function BinHeightMeasurementDetails() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Falls back to the first bin before one is picked, or after the picked one is removed.
   const selected = bins.find((bin) => bin.id === selectedId) ?? bins[0];
-
-  // Switching bins would leave the edited bin's page, so it is blocked like leaving the page is.
-  const editing = useAnyEditMode();
-  const unlessEditing =
-    <A extends unknown[]>(handler: (...args: A) => void) =>
-    (...args: A) =>
-      editing ? warnEditMode("switch") : handler(...args);
 
   const handleRemove = (id: string) => {
     const index = bins.findIndex((bin) => bin.id === id);
@@ -45,9 +37,9 @@ export function BinHeightMeasurementDetails() {
       <BinTabs
         bins={bins}
         selectedId={selected.id}
-        onSelect={unlessEditing(setSelectedId)}
-        onAdd={unlessEditing(() => setSelectedId(addBin().id))}
-        onRemove={unlessEditing(handleRemove)}
+        onSelect={setSelectedId}
+        onAdd={(name) => setSelectedId(addBin(name).id)}
+        onRemove={handleRemove}
       />
       <Box
         role="tabpanel"
