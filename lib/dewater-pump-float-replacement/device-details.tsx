@@ -20,10 +20,9 @@ import {
 import type { DeviceMessage } from "@/lib/bluetooth/commands/schema";
 import { useConnectionState, useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger, type DeviceMessenger } from "@/lib/bluetooth/messaging";
-import { disableEditMode, enableEditMode, useEditMode } from "@/lib/edit-mode";
+import { useEditMode } from "@/lib/edit-mode";
 import { dewaterPumpFloatReplacementProfile } from "./bluetooth-profile";
 import {
-  EditsToggle,
   formatReading,
   MOTOR_CURRENT_BAND_PLACEHOLDER,
   MOTOR_CURRENT_SCALE,
@@ -226,13 +225,6 @@ export function DewaterPumpFloatReplacementDetails() {
           <DeviceSection
             title="Pump Monitoring"
             description="Monitor water level, control pump trigger levels, and track runtime."
-            action={
-              <EditsToggle
-                editing={editing}
-                disabled={!connected}
-                onChange={(next) => (next ? enableEditMode(messenger.connection) : disableEditMode())}
-              />
-            }
           >
             <Box sx={{ mt: 2 }}>
               <PumpMonitoringDashboard

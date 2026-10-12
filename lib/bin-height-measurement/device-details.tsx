@@ -16,7 +16,7 @@ import { binHeightMeasurementCommands } from "@/lib/bluetooth/commands/bin-heigh
 import { useDeviceState, useLastSent } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { BinTabs } from "./bin-tabs";
-import { addBin, removeBin, useBins, type Bin } from "./bins";
+import { addBin, moveBin, removeBin, renameBin, useBins, type Bin } from "./bins";
 import { binHeightMeasurementProfile } from "./bluetooth-profile";
 
 export function BinHeightMeasurementDetails() {
@@ -39,7 +39,9 @@ export function BinHeightMeasurementDetails() {
         selectedId={selected.id}
         onSelect={setSelectedId}
         onAdd={(name) => setSelectedId(addBin(name).id)}
+        onRename={renameBin}
         onRemove={handleRemove}
+        onMove={moveBin}
       />
       <Box
         role="tabpanel"

@@ -55,7 +55,7 @@ export interface PumpMonitoringDashboardProps {
   state: PumpDashboardState;
   /**
    * Read-only dashboard: every control is inert, the readouts read as normal.
-   * The host owns the lock — see EditsToggle for the switch that opens it.
+   * The host owns the lock, e.g. opening it with the Connection section's Enable edits.
    */
   locked: boolean;
   /** Operation modes drawn but not selectable, with the reason for each. */

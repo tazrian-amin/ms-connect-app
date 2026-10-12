@@ -69,12 +69,13 @@ export function suggestBinName(): string {
   return `Bin ${number}`;
 }
 
-/** Why `name` can't be given to a new bin, or null if it can. */
-export function validateBinName(name: string): string | null {
+/** Why `name` can't be given to a new bin, or to the bin `renamingId` when renaming, or null if it can. */
+export function validateBinName(name: string, renamingId?: string): string | null {
   const trimmed = name.trim();
   if (!trimmed) return "Enter a name.";
   if (trimmed.length > BIN_NAME_MAX_LENGTH) return `Use at most ${BIN_NAME_MAX_LENGTH} characters.`;
-  if (findBinByName(trimmed)) return "Another bin already has this name.";
+  const other = findBinByName(trimmed);
+  if (other && other.id !== renamingId) return "Another bin already has this name.";
   return null;
 }
 
@@ -92,6 +93,11 @@ export function addBin(name: string): Bin {
   return bin;
 }
 
+/** Renames a bin (see `validateBinName`). Its sensor link is kept. */
+export function renameBin(id: string, name: string): void {
+  setBins(getBins().map((bin) => (bin.id === id ? { ...bin, name: name.trim() } : bin)));
+}
+
 /** Removes a bin and disconnects its sensor. The last bin is kept, so the page always has one to show. */
 export function removeBin(id: string): void {
   const current = getBins();
@@ -100,7 +106,18 @@ export function removeBin(id: string): void {
   setBins(current.filter((bin) => bin.id !== id));
 }
 
-/** The bins, in the order they were added. */
+/** Moves a bin to `index` in the list, shifting the bins between. Its sensor link is kept. */
+export function moveBin(id: string, index: number): void {
+  const current = getBins();
+  const from = current.findIndex((bin) => bin.id === id);
+  const to = Math.max(0, Math.min(index, current.length - 1));
+  if (from === -1 || from === to) return;
+  const next = [...current];
+  next.splice(to, 0, ...next.splice(from, 1));
+  setBins(next);
+}
+
+/** The bins, in the order the user arranged them. */
 export function useBins(): Bin[] {
   return useSyncExternalStore(subscribe, getBins, () => defaultBins);
 }
