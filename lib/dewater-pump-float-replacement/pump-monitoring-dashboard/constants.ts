@@ -262,16 +262,16 @@ export const PUMP_MIN_OFF_TIME_MAX = 1440;
 export const COLUMN_GAP = 20;
 
 /**
- * A track of air between the two reading columns and the six pump columns.
- * They do two different jobs — the pair reports what the station is doing, the
- * six set what it does — and at the ordinary column gap all eight read as one
- * undifferentiated row.
+ * A track of air between the two reading columns and the row labels that head
+ * the six pump columns. They do two different jobs — the pair reports what the
+ * station is doing, the six set what it does — and at the ordinary column gap
+ * the readings and the labels would run together into one row.
  *
  * Held as a track rather than a wider gap because grid gaps are all or
  * nothing, and it has to beat the space the water column's own title already
  * opens beside the current column: that space is mostly white (a thin rotated
  * line in a 24px gutter), so the eye would otherwise take *it* for the break —
- * the one place in the row where there isn't one. This lands the pumps about
+ * the one place in the row where there isn't one. This lands the labels about
  * twice that far off, with COLUMN_GAP either side of it.
  */
 export const PUMP_GROUP_GAP = 48;
@@ -293,6 +293,9 @@ export function gaugeColumnWidth(scale: GaugeScale): number {
 
 /** The motor current column's track — the grid's first. */
 export const CURRENT_COLUMN_WIDTH = gaugeColumnWidth(MOTOR_CURRENT_SCALE);
+
+/** The water level column's track — the grid's second. */
+export const WATER_COLUMN_WIDTH = gaugeColumnWidth(WATER_LEVEL_SCALE);
 
 /**
  * Width of one pump's grid column. Fixed rather than content-sized: the header

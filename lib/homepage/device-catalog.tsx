@@ -13,8 +13,13 @@ export function DeviceCatalog() {
   const results = filterDevices(query);
 
   return (
-    <Stack component="section" aria-labelledby="device-categories" spacing={3}>
-      <Typography id="device-categories" variant="h5" component="h2" sx={{ fontWeight: 500 }}>
+    <Stack component="section" aria-labelledby="device-categories" spacing={{ xs: 2, sm: 3 }}>
+      <Typography
+        id="device-categories"
+        variant="h5"
+        component="h2"
+        sx={{ fontWeight: 500, fontSize: { xs: "1.25rem", sm: "1.5rem" } }}
+      >
         Device Categories
       </Typography>
 
@@ -24,7 +29,7 @@ export function DeviceCatalog() {
         <Box
           sx={{
             display: "grid",
-            gap: 2.5,
+            gap: { xs: 1.5, sm: 2.5 },
             gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" },
           }}
         >

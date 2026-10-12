@@ -14,14 +14,18 @@ type DeviceSectionProps = {
 /** Card with a heading that every section of a device details page is built on. */
 export function DeviceSection({ title, description, action, children }: DeviceSectionProps) {
   return (
-    <Card component="section" variant="outlined" sx={{ borderRadius: 2, p: 2.5 }}>
+    <Card component="section" variant="outlined" sx={{ borderRadius: 2, p: { xs: 2, sm: 2.5 } }}>
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={2}
         sx={{ alignItems: { xs: "stretch", sm: "center" }, justifyContent: "space-between" }}
       >
         <Stack spacing={0.75} sx={{ minWidth: 0 }}>
-          <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h6"
+            component="h2"
+            sx={{ fontWeight: 600, fontSize: { xs: "1.0625rem", sm: "1.25rem" } }}
+          >
             {title}
           </Typography>
           {description && (

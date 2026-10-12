@@ -9,11 +9,12 @@ import Typography from "@mui/material/Typography";
 import {
   PUMP_COLUMN_SCALE_INSET,
   PUMP_DISABLED_OPACITY,
+  PUMP_GROUP_GAP,
   PumpMonitoringPalette,
 } from "./constants";
 import {
-  GaugeTrackGutter,
   PumpGroupGutter,
+  ReadingTracksGutter,
   type PumpColumnView,
 } from "./pump-header-rows";
 import type { UnavailableOptions } from "./modes";
@@ -145,9 +146,9 @@ function CounterValueRow({
 }) {
   return (
     <>
-      <GaugeTrackGutter />
-      <CounterRowLabel>{label}</CounterRowLabel>
+      <ReadingTracksGutter />
       <PumpGroupGutter />
+      <CounterRowLabel>{label}</CounterRowLabel>
       {views.map(({ column, pump }) => (
         <CounterValue
           key={column.number}
@@ -164,16 +165,24 @@ function CounterValueRow({
  * Hairline across the whole grid, separating one measure's block from what
  * comes before it. The counters are four rows of plain figures; without these
  * the runtime pair and the starts pair would read as one eight-row list.
+ *
+ * Runs from the pump group's vertical rule to the grid's end, not under the
+ * reading columns: the counters belong to the pumps alone. The gap track's
+ * left half is given up as margin so the line starts on the rule itself.
  */
 function GroupDivider() {
   return (
-    <Box
-      sx={{
-        gridColumn: "1 / -1",
-        height: "1px",
-        bgcolor: PumpMonitoringPalette.borderMuted,
-      }}
-    />
+    <>
+      <ReadingTracksGutter />
+      <Box
+        sx={{
+          gridColumn: "3 / -1",
+          ml: `${PUMP_GROUP_GAP / 2}px`,
+          height: "1px",
+          bgcolor: PumpMonitoringPalette.borderMuted,
+        }}
+      />
+    </>
   );
 }
 
@@ -273,15 +282,15 @@ function ResetAllButton({
 }
 
 /**
- * Empty cells holding the grid's motor current column, label column and group
- * gap open on the button rows — the reset button starts at the first pump.
+ * Empty cells holding the grid's two reading columns, group gap and label
+ * column open on the button rows — the reset button starts at the first pump.
  */
 function ButtonRowGutters() {
   return (
     <>
-      <GaugeTrackGutter />
-      <Box />
+      <ReadingTracksGutter />
       <PumpGroupGutter />
+      <Box />
     </>
   );
 }

@@ -1,7 +1,13 @@
 import Box from "@mui/material/Box";
+import type { Breakpoint } from "@mui/material/styles";
 import type { Device } from "./devices";
 
-export function DeviceIconTile({ Icon, size = 56 }: { Icon: Device["Icon"]; size?: number }) {
+type DeviceIconTileProps = {
+  Icon: Device["Icon"];
+  size?: number | Partial<Record<Breakpoint, number>>;
+};
+
+export function DeviceIconTile({ Icon, size = 56 }: DeviceIconTileProps) {
   return (
     <Box
       sx={{
@@ -16,7 +22,7 @@ export function DeviceIconTile({ Icon, size = 56 }: { Icon: Device["Icon"]; size
         borderColor: "divider",
       }}
     >
-      <Icon width={size * 0.6} height={size * 0.6} />
+      <Icon width="60%" height="60%" />
     </Box>
   );
 }

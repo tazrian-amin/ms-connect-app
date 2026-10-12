@@ -28,16 +28,28 @@ export default async function DevicePage(props: PageProps<"/devices/[slug]">) {
   const Details = deviceDetails[slug];
 
   return (
-    <Container component="main" maxWidth="xl" sx={{ py: 4 }}>
+    <Container component="main" maxWidth="xl" sx={{ py: { xs: 3, sm: 4 } }}>
       <BackButton href="/">All devices</BackButton>
 
-      <Stack direction="row" spacing={2.5} sx={{ alignItems: "center", mb: 2 }}>
-        <DeviceIconTile Icon={device.Icon} size={72} />
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+      <Stack
+        direction="row"
+        spacing={{ xs: 1.5, sm: 2.5 }}
+        sx={{ alignItems: "center", mb: { xs: 1.5, sm: 2 } }}
+      >
+        <DeviceIconTile Icon={device.Icon} size={{ xs: 52, sm: 72 }} />
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{ fontWeight: 700, fontSize: { xs: "1.375rem", sm: "1.75rem", md: "2.125rem" }, lineHeight: 1.25 }}
+        >
           {device.name}
         </Typography>
       </Stack>
-      <Typography sx={{ color: "text.secondary", mb: 4 }}>{device.description}</Typography>
+      <Typography
+        sx={{ color: "text.secondary", fontSize: { xs: "0.9375rem", sm: "1rem" }, mb: { xs: 3, sm: 4 } }}
+      >
+        {device.description}
+      </Typography>
 
       <Details />
     </Container>

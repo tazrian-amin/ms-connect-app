@@ -9,6 +9,7 @@ import {
   PUMP_COLUMN_WIDTH,
   PUMP_GROUP_GAP,
   PumpMonitoringPalette,
+  WATER_COLUMN_WIDTH,
 } from "./constants";
 import { MinOffTimeSection } from "./min-off-time-section";
 import { ModeSection } from "./mode-section";
@@ -28,6 +29,7 @@ import {
 import { PumpColumn } from "./pump-column";
 import { PumpCounterRows } from "./pump-counter-rows";
 import {
+  PumpGroupDivider,
   PumpGroupGutter,
   PumpHeaderRows,
   type PumpColumnView,
@@ -42,7 +44,7 @@ import type {
 } from "./types";
 import type { LastResetTimes } from "./use-last-reset";
 import { usePendingActions } from "./use-pending-actions";
-import { WaterLevelColumn } from "./water-level-column";
+import { WaterLevelColumn, WaterLevelHeading } from "./water-level-column";
 
 /**
  * What a handler may return. Resolve `false` (or throw) when the change did not
@@ -356,19 +358,24 @@ export function PumpMonitoringDashboard({
           <Box
             sx={{
               display: "grid",
-              // Motor current track, then the row labels / water level track,
-              // a gap track, then one track per pump column.
-              gridTemplateColumns: `${CURRENT_COLUMN_WIDTH}px auto ${PUMP_GROUP_GAP}px repeat(${columnViews.length}, ${PUMP_COLUMN_WIDTH}px)`,
+              // Motor current and water level tracks, a gap track, the row
+              // labels, then one track per pump column.
+              gridTemplateColumns: `${CURRENT_COLUMN_WIDTH}px ${WATER_COLUMN_WIDTH}px ${PUMP_GROUP_GAP}px auto repeat(${columnViews.length}, ${PUMP_COLUMN_WIDTH}px)`,
               columnGap: `${COLUMN_GAP}px`,
               rowGap: 1.5,
               alignItems: "center",
               pb: 0.5,
               width: "max-content",
+              position: "relative",
             }}
           >
+            <PumpGroupDivider />
             <PumpHeaderRows
               views={columnViews}
-              leading={<MotorCurrentHeading />}
+              readingHeadings={[
+                <MotorCurrentHeading key="current" />,
+                <WaterLevelHeading key="water" />,
+              ]}
               onEnabledChange={setPumpEnabled}
               locked={locked}
               isEnablePending={(pumpId) =>
@@ -409,6 +416,8 @@ export function PumpMonitoringDashboard({
             </Box>
 
             <PumpGroupGutter />
+            {/* The label column has nothing to say on the gauge row. */}
+            <Box />
 
             {columnViews.map(({ column, pump }) => (
               <Box

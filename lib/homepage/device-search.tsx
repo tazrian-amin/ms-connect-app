@@ -21,10 +21,10 @@ export function DeviceSearch({ value, onChange }: DeviceSearchProps) {
         input: {
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ color: "text.secondary" }} />
+              <SearchIcon sx={{ color: "text.secondary", fontSize: { xs: 20, sm: 24 } }} />
             </InputAdornment>
           ),
-          sx: { borderRadius: 2, py: 0.5 },
+          sx: { borderRadius: 2, py: { xs: 0, sm: 0.5 }, fontSize: { xs: "0.9375rem", sm: "1rem" } },
         },
         htmlInput: { "aria-label": "Search devices" },
       }}

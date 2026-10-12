@@ -26,11 +26,21 @@ export function DeviceCard({ device }: { device: Device }) {
       <CardActionArea
         component={Link}
         href={`/devices/${device.slug}`}
-        sx={{ display: "flex", alignItems: "flex-start", justifyContent: "flex-start", gap: 2, p: 2.5 }}
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
+          gap: { xs: 1.5, sm: 2 },
+          p: { xs: 2, sm: 2.5 },
+        }}
       >
-        <DeviceIconTile Icon={device.Icon} />
-        <Stack spacing={1} sx={{ alignItems: "flex-start" }}>
-          <Typography variant="h6" component="h3" sx={{ fontWeight: 600, fontSize: "1.125rem" }}>
+        <DeviceIconTile Icon={device.Icon} size={{ xs: 48, sm: 56 }} />
+        <Stack spacing={1} sx={{ alignItems: "flex-start", minWidth: 0 }}>
+          <Typography
+            variant="h6"
+            component="h3"
+            sx={{ fontWeight: 600, fontSize: { xs: "1rem", sm: "1.125rem" }, lineHeight: 1.35 }}
+          >
             <span aria-hidden>{device.emoji}</span> {device.name}
           </Typography>
           {status !== "disconnected" && <ConnectionStatusChip status={status} />}

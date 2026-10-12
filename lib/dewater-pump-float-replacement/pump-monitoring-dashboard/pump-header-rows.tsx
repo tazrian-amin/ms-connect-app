@@ -32,12 +32,13 @@ export interface PumpColumnView {
 interface PumpHeaderRowsProps {
   views: PumpColumnView[];
   /**
-   * Heads the gauge track — the grid's first column, where the motor current
-   * column stands. Given all three header rows as one cell: that track has no
-   * switch, number or status to line up with, so splitting it across them
-   * would only put a heading on rows that mean nothing to it.
+   * Head the two reading tracks — the grid's first two columns, where the motor
+   * current and water level columns stand. Each is given all three header rows
+   * as one cell: those tracks have no switch, number or status to line up
+   * with, so splitting a heading across them would only put it on rows that
+   * mean nothing to it.
    */
-  leading?: ReactNode;
+  readingHeadings: readonly [current: ReactNode, water: ReactNode];
   onEnabledChange: (pumpId: number, enabled: boolean) => void;
   /** Read-only dashboard: the switches are inert, the rest reads as normal. */
   locked: boolean;
@@ -49,41 +50,70 @@ interface PumpHeaderRowsProps {
 const UNBOUND_LABEL = "—";
 
 /**
- * Empty cell holding open the grid's first track, where the motor current
- * column stands. Every counter row emits one, because a row that skipped it
- * would shunt its whole line one column to the left. The header rows are
- * covered instead by the heading below, which spans all three of them.
+ * Empty cell holding open the grid's first two tracks, where the motor current
+ * and water level columns stand. Every counter row emits one, because a row
+ * that skipped it would shunt its whole line two columns to the left. The
+ * header rows are covered instead by the headings below, which span all three
+ * of them.
  */
-export function GaugeTrackGutter() {
-  return <Box />;
+export function ReadingTracksGutter() {
+  return <Box sx={{ gridColumn: "span 2" }} />;
 }
 
 /**
- * Empty cell holding open the gap track that sets the pumps apart from the two
- * reading columns — see PUMP_GROUP_GAP. Emitted by every row for the same
- * reason as the gutter above: the track exists whether or not a row has
- * anything to put in it, and a row that skipped it would shunt its pumps a
- * column to the left.
+ * Empty cell holding open the gap track that sets the row labels and pumps
+ * apart from the two reading columns — see PUMP_GROUP_GAP. Emitted by every
+ * row for the same reason as the gutter above: the track exists whether or not
+ * a row has anything to put in it, and a row that skipped it would shunt its
+ * labels and pumps a column to the left.
  */
 export function PumpGroupGutter() {
   return <Box />;
 }
 
 /**
- * The gauge track's heading, spanning the three header rows as a single cell.
- *
- * Placed first, so the grid's own auto-placement does the rest: with this cell
- * holding rows 1-3 of the first column, every following row's cells simply
- * skip it and start at the labels, exactly as they would past three separate
- * gutters.
+ * Rule down the middle of the gap track, setting the pump side of the grid
+ * apart from the two reading columns. Absolutely positioned in that track, so
+ * it takes no cell of its own and runs the grid's full height, over every row
+ * gap in between. Needs the grid to be `position: relative`.
  */
-function GaugeTrackHeading({ children }: { children: ReactNode }) {
+export function PumpGroupDivider() {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        position: "absolute",
+        gridColumn: "3 / 4",
+        gridRow: "auto / auto",
+        top: 0,
+        bottom: 0,
+        left: "50%",
+        width: "1px",
+        bgcolor: PumpMonitoringPalette.border,
+      }}
+    />
+  );
+}
+
+/**
+ * A reading track's heading, spanning the three header rows as a single cell.
+ *
+ * Both are placed first, so the grid's own auto-placement does the rest: with
+ * these cells holding rows 1-3 of the first two columns, every following row's
+ * cells simply skip them and start at the gap track, exactly as they would
+ * past separate gutters.
+ *
+ * Sits at the foot of its cell, so it stands just over the gauge it heads
+ * rather than floating midway up the three rows.
+ */
+function ReadingTrackHeading({ children }: { children: ReactNode }) {
   return (
     <Box
       sx={{
         gridRow: "span 3",
+        alignSelf: "stretch",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-end",
         justifyContent: "center",
         px: 0.5,
       }}
@@ -94,9 +124,10 @@ function GaugeTrackHeading({ children }: { children: ReactNode }) {
 }
 
 /**
- * The row's name, in the grid's label column — the same column the water level
- * gauge sits in underneath. Centered on that column, the way every pump cell is
- * centered on its own, so the three read as one stack.
+ * The row's name, in the grid's label column — between the reading columns and
+ * the pumps, so it reads as the start of the pump rows it names. Centered on
+ * that column, the way every pump cell is centered on its own, so the three
+ * read as one stack.
  */
 function RowLabel({ children, height }: { children: ReactNode; height: number }) {
   return (
@@ -272,16 +303,17 @@ function StatusIndicator({ runState }: { runState: PumpRunState | null }) {
  */
 export function PumpHeaderRows({
   views,
-  leading,
+  readingHeadings,
   onEnabledChange,
   locked,
   isEnablePending,
 }: PumpHeaderRowsProps) {
   return (
     <>
-      <GaugeTrackHeading>{leading}</GaugeTrackHeading>
-      <RowLabel height={PUMP_TOGGLE_HEIGHT}>Enable/Disable</RowLabel>
+      <ReadingTrackHeading>{readingHeadings[0]}</ReadingTrackHeading>
+      <ReadingTrackHeading>{readingHeadings[1]}</ReadingTrackHeading>
       <PumpGroupGutter />
+      <RowLabel height={PUMP_TOGGLE_HEIGHT}>Enable/Disable</RowLabel>
       {views.map(({ column, pump }) => (
         <HeaderCell key={column.number} height={PUMP_TOGGLE_HEIGHT}>
           <EnableSwitch
@@ -294,16 +326,16 @@ export function PumpHeaderRows({
         </HeaderCell>
       ))}
 
-      <RowLabel height={COLUMN_TITLE_HEIGHT}>Pumps</RowLabel>
       <PumpGroupGutter />
+      <RowLabel height={COLUMN_TITLE_HEIGHT}>Pumps</RowLabel>
       {views.map(({ column, pump }) => (
         <HeaderCell key={column.number} height={COLUMN_TITLE_HEIGHT}>
           <PumpTitle pump={pump} />
         </HeaderCell>
       ))}
 
-      <RowLabel height={STATUS_INDICATOR_HEIGHT}>Status</RowLabel>
       <PumpGroupGutter />
+      <RowLabel height={STATUS_INDICATOR_HEIGHT}>Status</RowLabel>
       {views.map(({ column, runState }) => (
         <HeaderCell key={column.number} height={STATUS_INDICATOR_HEIGHT}>
           <StatusIndicator runState={runState} />

@@ -29,6 +29,26 @@ import type { Band } from "./types";
  */
 const WATER_POINTER_TEXT: ThresholdPointerText = { high: "MAX", low: "MIN" };
 
+/**
+ * What the water column is *for*, over the column itself — the counterpart of
+ * MotorCurrentHeading, taking the three header rows as one block beside it.
+ */
+export function WaterLevelHeading() {
+  return (
+    <Typography
+      sx={{
+        color: PumpMonitoringPalette.text,
+        fontSize: 15,
+        fontWeight: 700,
+        lineHeight: 1.3,
+        textAlign: "center",
+      }}
+    >
+      Current Water Level
+    </Typography>
+  );
+}
+
 interface WaterLevelColumnProps {
   /** Live water level in feet; null until the device reports one. */
   waterLevel: number | null;
@@ -54,8 +74,8 @@ interface WaterLevelColumnProps {
  * are independent of the per-pump triggers: the LEDs keep showing the raw
  * level, and the pointers only mark this column's own band.
  *
- * Sits in the dashboard grid's first column, under the three row labels — so
- * it names itself up the side of its gauge rather than from a title line.
+ * Sits in the dashboard grid's second column, beside the motor current column,
+ * under its own heading — and names its quantity up the side of its gauge.
  */
 export function WaterLevelColumn({
   waterLevel,
