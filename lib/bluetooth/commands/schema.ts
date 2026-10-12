@@ -54,14 +54,28 @@ export type CommandSet = {
   actions: readonly string[];
   /** Values the app can set, sent as {"<setting>":"<value>"}. */
   settings: Record<string, SettingType>;
+  /** See `ReadRejection`. Only for firmware that doesn't report rejections as `error`/`cmd`. */
+  readRejection?: ReadRejection;
 };
+
+/**
+ * Reads a rejected command out of a message from firmware that reports it in its own fields rather
+ * than `error` and `cmd`. Returns null for a message that isn't a rejection. The messenger fills in
+ * `error` and `cmd` from the result, so everything else sees the standard form.
+ */
+export type ReadRejection = (data: Record<string, unknown>) => ReservedFields | null;
 
 /** Identity helper that keeps names and field types as literals. */
 export function defineCommands<
   const F extends DataSchema,
   const A extends readonly string[],
   const S extends Record<string, SettingType>,
->(commands: { fields: F; actions: A; settings: S }): { fields: F; actions: A; settings: S } {
+>(commands: {
+  fields: F;
+  actions: A;
+  settings: S;
+  readRejection?: ReadRejection;
+}): { fields: F; actions: A; settings: S; readRejection?: ReadRejection } {
   return commands;
 }
 
@@ -125,7 +139,11 @@ export function parseDeviceMessage<C extends CommandSet>(commands: C, line: stri
 
   for (const [field, value] of Object.entries(data)) {
     const type: FieldType | undefined =
-      field === "error" || field === "cmd" ? "string" : Object.hasOwn(commands.fields, field) ? commands.fields[field] : undefined;
+      field === "error" || field === "cmd"
+        ? "string"
+        : Object.hasOwn(commands.fields, field)
+          ? commands.fields[field]
+          : undefined;
     // Unknown fields are ignored so firmware can add fields before the app knows them.
     if (type !== undefined && !matches(value, type)) fail(`\`data.${field}\` must be ${describe(type)}.`);
   }

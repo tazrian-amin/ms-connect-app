@@ -171,6 +171,8 @@ export class DeviceMessenger<C extends CommandSet> {
       return;
     }
     this.#emitTraffic({ direction: "in", line, time: Date.now() });
+    const rejection = message.data.error === undefined ? this.commands.readRejection?.(message.data) : null;
+    if (rejection) message = { ...message, data: { ...message.data, ...rejection } };
     this.#merge(message);
     this.#listeners.forEach((listener) => listener(message));
   }

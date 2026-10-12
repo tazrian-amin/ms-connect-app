@@ -4,7 +4,7 @@ import { DeviceCatalog } from "@/lib/homepage/device-catalog";
 
 export default function Home() {
   return (
-    <Container component="main" maxWidth="lg" sx={{ py: 4 }}>
+    <Container component="main" maxWidth="xl" sx={{ py: 4 }}>
       <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 2 }}>
         Connect Your Device
       </Typography>

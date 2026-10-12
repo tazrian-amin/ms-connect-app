@@ -28,7 +28,7 @@ export default async function DevicePage(props: PageProps<"/devices/[slug]">) {
   const Details = deviceDetails[slug];
 
   return (
-    <Container component="main" maxWidth="lg" sx={{ py: 4 }}>
+    <Container component="main" maxWidth="xl" sx={{ py: 4 }}>
       <BackButton href="/">All devices</BackButton>
 
       <Stack direction="row" spacing={2.5} sx={{ alignItems: "center", mb: 2 }}>

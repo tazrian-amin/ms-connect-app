@@ -216,34 +216,45 @@ Each table is the device's `data` field list (with types) and the commands it ac
 
 ### Dewater Pump Float Replacement
 
-Agreed with `firmware/dewater-pump-float-replacement`. Uses a JDY-23 serial module (section 1). Levels are water heights in m: 20 m minus the radar's distance to the surface. `N` is the pump number, 1–6.
+Agreed with `firmware/dewater-pump-float-replacement`, whose field and command names are the source of truth; the app follows them. Uses a JDY-23 serial module (section 1). Levels are water heights in m: 20 m minus the radar's distance to the surface. `N` is the pump or column number, 1–6.
 
 | Kind | Name | Type / reply |
 | --- | --- | --- |
 | Field | `embedded_software_ver`, `category`, `product_uid`, `serial_number` | string |
-| Field | `ble_data_interval_s` | number (s), how often periodic data is sent |
+| Field | `adc_voltage_v1`, `supply_voltage_v2`, `lat`, `lon` | string, placeholders ending in `nc` until measured |
+| Field | `sample_period_s`, `period_s`, `ble_data_interval_s` | number (s), how often periodic data is sent; the name depends on the command that reports it |
+| Field | `status` | `"ok" \| "error"`, on every reply to a command |
+| Field | `msg` | string, why a command was rejected (with `status` `"error"`); starts with the command name when the firmware recognised it |
 | Field | `current_water_level` | number (m) |
-| Field | `pump_cooldown_min` | number (min a pump rests after stopping) |
-| Field | `water_high_thr_m` | number (m), at or above it every enabled pump runs |
-| Field | `water_low_thr_m` | number (m), at or below it every pump stops with a fault |
+| Field | `motor_current` | number (filtered A1 reading, 12-bit ADC counts) |
+| Field | `pump_min_off_time_min` | number (min a pump rests after stopping) |
+| Field | `water_high_thr` | number (m), at or above it every enabled pump runs |
+| Field | `water_low_thr` | number (m), at or below it every pump stops with a fault |
 | Field | `pump_logic_mode` | `"normal" \| "alteration" \| "winter"` |
 | Field | `pump_N_enabled`, `pump_N_fault` | boolean |
+| Field | `pump_N_state` | `"on" \| "off"` |
 | Field | `pump_N_total_starts`, `pump_N_current_starts` | number (current = since the last reset) |
-| Field | `pump_N_high_thr`, `pump_N_low_thr` | number (m), where pump N starts / stops |
+| Field | `pump_N_total_runtime`, `pump_N_current_runtime` | number (s; current = since the last reset) |
+| Field | `column_N_high_thr`, `column_N_low_thr` | number (m), where column N's pump starts / stops |
+| Field | `column_N_pump` | number, the pump answering column N |
 | Field | `current_high_thr`, `current_low_thr` | number (12-bit ADC counts) |
-| Periodic | every `ble_data_interval_s` | `current_water_level`, `pump_N_total_starts`, `pump_N_current_starts` |
-| Action | `get_status` | `embedded_software_ver`, `category`, `product_uid`, `serial_number`, `ble_data_interval_s` |
-| Action | `get_config` | `category`, `product_uid`, `serial_number`, `ble_data_interval_s` |
-| Action | `get_pump_states` | three messages: `pump_N_enabled`/`fault`/`total_starts`/`current_starts`; `pump_N_high_thr`/`low_thr`; `current_water_level`, `pump_cooldown_min`, `water_high_thr_m`, `water_low_thr_m`, `pump_logic_mode` |
-| Action | `get_sample_period` | `ble_data_interval_s` |
-| Action | `reset_pump_count` | every `pump_N_current_starts` (0) |
+| Field | `pump_counts_reset`, `pump_runtime_reset` | number (`1` in the reply to a reset) |
+| Periodic | every interval | `current_water_level`, `motor_current`; then per pump `pump_N_state`, `pump_N_fault`, `pump_N_total_starts`, `pump_N_current_starts`, `pump_N_total_runtime`, `pump_N_current_runtime` |
+| Action | `get_status` | `embedded_software_ver`, `category`, `product_uid`, `serial_number`, `sample_period_s`, `adc_voltage_v1`, `supply_voltage_v2`, `lat`, `lon` |
+| Action | `get_config` | `category`, `product_uid`, `serial_number`, `sample_period_s` |
+| Action | `get_pump_states` | three messages: `pump_N_enabled`/`fault`/`state`/`total_runtime`/`current_runtime`/`total_starts`/`current_starts`; `column_N_high_thr`/`low_thr`/`pump`; `current_water_level`, `pump_min_off_time_min`, `water_high_thr`, `water_low_thr`, `pump_logic_mode`, `current_high_thr`, `current_low_thr`, `motor_current` |
+| Action | `get_sample_period` | `period_s` |
+| Setting | `reset_pump_count` | `"1"` (send `true`); replies `pump_counts_reset` and every `pump_N_current_starts` (0) |
+| Setting | `reset_pump_runtime` | `"1"` (send `true`); replies `pump_runtime_reset` and every `pump_N_current_runtime` (0) |
 | Setting | `pump_logic_mode` | mode; replies `pump_logic_mode` |
-| Setting | `set_pump_cooldown_min` | number ≥ 30; replies `pump_cooldown_min` |
-| Setting | `ble_data_interval_s` | number 1–3600; replies `ble_data_interval_s` |
-| Setting | `set_water_high_thr_m`, `set_water_low_thr_m` | number (m); replies `water_high_thr_m` / `water_low_thr_m` |
+| Setting | `set_pump_cooldown_min` | number 30–1440; replies `pump_min_off_time_min` |
+| Setting | `ble_data_interval_s` | number (s); replies `ble_data_interval_s` |
+| Setting | `set_water_high_thr_m`, `set_water_low_thr_m` | number (m); replies `water_high_thr` / `water_low_thr` |
 | Setting | `set_current_sens_high_thr`, `set_current_sens_low_thr` | number 0–4095; replies `current_high_thr` / `current_low_thr` |
 | Setting | `pump_N_set_enable` | boolean; replies `pump_N_enabled` |
-| Setting | `pump_N_set_high`, `pump_N_set_low` | number (m), high above low; replies `pump_N_high_thr` / `pump_N_low_thr` |
+| Setting | `pump_N_set_high`, `pump_N_set_low` | number (m), high above low; replies `column_N_high_thr` / `column_N_low_thr` |
+
+The firmware reports a rejected command as `"status":"error"` and `msg` rather than `error`/`cmd`; the app reads it through the command set's `readRejection` (see [schema.ts](schema.ts)).
 
 ### Conveyor Volumetric Scale
 
