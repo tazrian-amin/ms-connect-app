@@ -1,4 +1,5 @@
 import { encodeText } from "./codec";
+import { bleLog } from "./debug";
 import {
   formatAction,
   formatSetting,
@@ -123,12 +124,19 @@ export class DeviceMessenger<C extends CommandSet> {
 
   async #write(line: string, sent: SentCommand): Promise<void> {
     const bytes = encodeText(line);
+    bleLog("tx", `sending ${JSON.stringify(line)} (${bytes.length} bytes)`);
     // Queue every chunk synchronously so chunks of concurrent sends cannot interleave.
     const writes: Promise<void>[] = [];
     for (let offset = 0; offset < bytes.length; offset += WRITE_CHUNK_BYTES) {
       writes.push(this.connection.write("toDevice", bytes.subarray(offset, offset + WRITE_CHUNK_BYTES)));
     }
-    await Promise.all(writes);
+    try {
+      await Promise.all(writes);
+    } catch (error) {
+      bleLog("tx", `write failed for ${JSON.stringify(line)}`, error);
+      throw error;
+    }
+    bleLog("tx", "acknowledged");
     this.#emitTraffic({ direction: "out", line: line.trimEnd(), time: Date.now() });
     this.#lastSent.set(sent.name, sent);
     this.#sentListeners.forEach((listener) => listener());
@@ -136,6 +144,7 @@ export class DeviceMessenger<C extends CommandSet> {
 
   #listen<L>(listeners: Set<L>, listener: L): () => void {
     listeners.add(listener);
+    if (!this.#unsubscribe) bleLog("messaging", "listening for device messages");
     this.#unsubscribe ??= this.connection.subscribe("fromDevice", this.#receive);
     return () => {
       listeners.delete(listener);
@@ -152,7 +161,10 @@ export class DeviceMessenger<C extends CommandSet> {
     while ((newline = this.#buffer.indexOf("\n")) !== -1) {
       const line = this.#buffer.slice(0, newline).trim();
       this.#buffer = this.#buffer.slice(newline + 1);
-      if (line) this.#dispatch(line);
+      if (line) {
+        bleLog("rx", `line ${line}`);
+        this.#dispatch(line);
+      }
     }
     if (this.#buffer.length > MAX_LINE_LENGTH) {
       console.warn(`Dropped ${this.#buffer.length} characters from the device with no line ending.`);
@@ -171,6 +183,7 @@ export class DeviceMessenger<C extends CommandSet> {
       return;
     }
     this.#emitTraffic({ direction: "in", line, time: Date.now() });
+    bleLog("rx", "message", message);
     const rejection = message.data.error === undefined ? this.commands.readRejection?.(message.data) : null;
     if (rejection) message = { ...message, data: { ...message.data, ...rejection } };
     this.#merge(message);
@@ -180,12 +193,16 @@ export class DeviceMessenger<C extends CommandSet> {
   #merge(message: DeviceMessage<C>) {
     // Only declared fields; `error`, `cmd` and unknown fields are not device state.
     const fields = Object.entries(message.data).filter(([field]) => Object.hasOwn(this.commands.fields, field));
-    if (fields.length === 0) return;
+    if (fields.length === 0) {
+      bleLog("state", "message had no declared fields; state unchanged", message.data);
+      return;
+    }
     this.#state = {
       deviceId: message.deviceId,
       data: { ...this.#state.data, ...Object.fromEntries(fields) },
       updatedAt: Math.max(this.#state.updatedAt ?? 0, message.timestamp),
     };
+    bleLog("state", "updated", this.#state.data);
     this.#stateListeners.forEach((listener) => listener());
   }
 

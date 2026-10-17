@@ -1,3 +1,5 @@
+import { toHex } from "./codec";
+import { bleLog } from "./debug";
 import { describeBluetoothError, isChooserCancelled } from "./errors";
 import type { DeviceProfile } from "./profile";
 
@@ -78,7 +80,9 @@ export class BluetoothConnection<K extends string = string> {
     let device: BluetoothDevice;
     try {
       device = await navigator.bluetooth.requestDevice(this.#requestOptions());
+      bleLog("connection", `picked "${device.name ?? "unnamed"}" (${device.id})`);
     } catch (error) {
+      bleLog("connection", "device chooser failed or was cancelled", error);
       this.#setState({ status: "disconnected", error: isChooserCancelled(error) ? null : describeBluetoothError(error) });
       return;
     }
@@ -103,6 +107,7 @@ export class BluetoothConnection<K extends string = string> {
     try {
       await this.#open("connecting");
     } catch (error) {
+      bleLog("connection", "connect failed", error);
       this.#setState({ status: "disconnected", error: describeBluetoothError(error) });
     }
   }
@@ -176,6 +181,7 @@ export class BluetoothConnection<K extends string = string> {
       throw error;
     }
     if (!gatt.connected) throw new DOMException("The device dropped the connection.", "NetworkError");
+    bleLog("connection", `GATT connected (${status})`);
 
     this.#reconnectAttempt = 0;
     this.#setState({ status: "connected", error: null });
@@ -186,6 +192,7 @@ export class BluetoothConnection<K extends string = string> {
   }
 
   #handleDisconnected = () => {
+    bleLog("connection", `GATT disconnected while ${this.#state.status}${this.#userDisconnected ? " (by user)" : ""}`);
     this.#characteristics.clear();
     // Only an established link reconnects on its own. While connecting or reconnecting, #open's
     // failure handling owns the state; when already disconnected, the drop is not ours.
@@ -220,8 +227,10 @@ export class BluetoothConnection<K extends string = string> {
     if (!gatt?.connected) throw new DOMException("The device is not connected.", "InvalidStateError");
 
     const ref = this.profile.characteristics[key];
+    bleLog("connection", `looking up "${key}": service ${ref.service}, characteristic ${ref.characteristic}`);
     const service = await gatt.getPrimaryService(ref.service);
     const characteristic = await service.getCharacteristic(ref.characteristic);
+    bleLog("connection", `found "${key}"`, characteristic.properties);
     // The browser may hand back the same object after a reconnect, or for another key; attach the handler once.
     let keys = this.#keysOf.get(characteristic);
     if (!keys) {
@@ -231,6 +240,7 @@ export class BluetoothConnection<K extends string = string> {
       characteristic.addEventListener("characteristicvaluechanged", () => {
         const value = characteristic.value;
         if (!value) return;
+        bleLog("rx", `${value.byteLength} bytes: ${toHex(value)}`);
         sharingKeys.forEach((sharingKey) => this.#valueListeners.get(sharingKey)?.forEach((listener) => listener(value)));
       });
     }
@@ -242,6 +252,7 @@ export class BluetoothConnection<K extends string = string> {
   async #startNotifications(key: K): Promise<void> {
     const characteristic = await this.#characteristic(key);
     await characteristic.startNotifications();
+    bleLog("connection", `notifications on for "${key}"`);
   }
 
   #enqueue<T>(operation: () => Promise<T>): Promise<T> {
@@ -251,6 +262,7 @@ export class BluetoothConnection<K extends string = string> {
   }
 
   #reportError = (error: unknown) => {
+    bleLog("connection", "operation failed", error);
     this.#setState({ error: describeBluetoothError(error) });
   };
 
@@ -260,6 +272,10 @@ export class BluetoothConnection<K extends string = string> {
   }
 
   #setState(patch: Partial<ConnectionState>) {
+    if (patch.status && patch.status !== this.#state.status) {
+      bleLog("connection", `${this.#state.status} → ${patch.status}`);
+    }
+    if (patch.error) bleLog("connection", `error shown: ${patch.error}`);
     this.#state = { ...this.#state, ...patch };
     this.#stateListeners.forEach((listener) => listener());
   }

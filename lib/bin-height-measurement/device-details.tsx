@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import Box from "@mui/material/Box";
-import LinearProgress from "@mui/material/LinearProgress";
-import Typography from "@mui/material/Typography";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
 import { ControlSection } from "@/components/device-details/control-section";
 import { DashboardSection } from "@/components/device-details/dashboard-section";
-import { DashboardWidget, StatWidget } from "@/components/device-details/dashboard-widgets";
+import { StatWidget } from "@/components/device-details/dashboard-widgets";
 import { DeviceDetailsLayout } from "@/components/device-details/device-details-layout";
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
 import { binHeightMeasurementCommands } from "@/lib/bluetooth/commands/bin-height-measurement";
-import { useDeviceState, useLastSent } from "@/lib/bluetooth/hooks";
+import { useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { BinTabs } from "./bin-tabs";
 import { addBin, moveBin, removeBin, renameBin, useBins, type Bin } from "./bins";
@@ -59,12 +57,7 @@ export function BinHeightMeasurementDetails() {
 /** Connection, settings, readings and telemetry of one bin, over its own sensor's link. */
 function BinDetails({ bin }: { bin: Bin }) {
   const messenger = getMessenger(binHeightMeasurementProfile, binHeightMeasurementCommands, bin);
-  const { data, updatedAt } = useDeviceState(messenger);
-  const lastSent = useLastSent(messenger, "set_bin_height");
-
-  const binHeight = data.bin_height ?? (lastSent?.value as number | undefined) ?? null;
-  const height = data.height ?? null;
-  const fill = binHeight && height !== null ? Math.min(Math.max((1 - height / binHeight) * 100, 0), 100) : null;
+  const { deviceId, data, updatedAt } = useDeviceState(messenger);
 
   return (
     <DeviceDetailsLayout
@@ -74,14 +67,21 @@ function BinDetails({ bin }: { bin: Bin }) {
         <ControlSection>
           <SettingForm
             messenger={messenger}
-            setting="set_bin_height"
-            title="Bin height"
-            description="Distance from the sensor to the bottom of the empty bin."
-            label="Bin height"
-            unit="m"
-            min={0}
-            reported={data.bin_height}
+            setting="set_device_id"
+            title="Device ID"
+            description="Serial number the sensor reports itself as. Stored on the device."
+            label="Device ID"
+            reported={deviceId}
           />
+          <Box>
+            <ActionButton
+              messenger={messenger}
+              action="reset_config"
+              label="Reset device ID"
+              color="error"
+              confirm="The stored device ID will be cleared and the sensor will use its chip ID instead."
+            />
+          </Box>
         </ControlSection>
       }
       dashboard={
@@ -90,36 +90,20 @@ function BinDetails({ bin }: { bin: Bin }) {
           action={
             <ActionButton
               messenger={messenger}
-              action="get_reading"
+              action="read_now"
               label="Refresh"
               icon={<RefreshIcon />}
               requiresEditMode={false}
             />
           }
         >
-          <StatWidget label="Distance to material" value={height} unit="m" precision={2} />
-          <StatWidget label="Bin height" value={binHeight} unit="m" precision={2} />
-          <DashboardWidget label="Fill level" sx={{ gridColumn: "1 / -1" }}>
-            <Typography variant="h4" component="p" sx={{ fontWeight: 600 }}>
-              {fill === null ? "—" : `${Math.round(fill)}%`}
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={fill ?? 0}
-              aria-label="Fill level"
-              sx={{ height: 10, borderRadius: 5 }}
-            />
-            {fill === null && (
-              <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                Needs a reading and the bin height.
-              </Typography>
-            )}
-          </DashboardWidget>
+          {/* Raw ADC counts until the sensor is calibrated to metres. */}
+          <StatWidget label="Material height" value={data.material_height} unit="ADC" precision={0} />
         </DashboardSection>
       }
       telemetry={
         <TelemetrySection>
-          <TelemetryChart title="Distance to material" unit="m" />
+          <TelemetryChart title="Material height" unit="ADC" />
         </TelemetrySection>
       }
     />

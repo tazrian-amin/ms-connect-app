@@ -2,7 +2,7 @@
 
 How every MS Connect device talks to the MS Connect app over Bluetooth Low Energy (BLE). All device types use the same connection, the same message format and the same command format. The only thing that differs between devices is **which fields they report and which commands they accept** (section 6).
 
-> **Status: draft.** Sections 1–5 are settled. In section 6, only Dewater Pump Float Replacement has been agreed with firmware; the other device models are placeholders.
+> **Status: draft.** Sections 1–5 are settled. In section 6, only Dewater Pump Float Replacement and Bin Height Measurement have been agreed with firmware; the other device models are placeholders.
 
 ## At a glance
 
@@ -176,7 +176,7 @@ Existing firmware may keep its current names (see Dewater Pump Float Replacement
 
 ## 5. Example session
 
-Using the placeholder Bin Height Measurement model from section 6:
+Using a hypothetical bin height model (not the agreed one in section 6):
 
 ```text
 app    connects, turns on notifications on TX
@@ -193,7 +193,7 @@ device → {"deviceId":"BH-0007","timestamp":1759400006000,"data":{"error":"bin 
 
 Each table is the device's `data` field list (with types) and the commands it accepts.
 
-> **Placeholders**, except Dewater Pump Float Replacement. The app already validates strictly against them, so until a model is agreed and this document is updated, a declared field sent with another type will get its message rejected.
+> **Placeholders**, except Dewater Pump Float Replacement and Bin Height Measurement. The app already validates strictly against them, so until a model is agreed and this document is updated, a declared field sent with another type will get its message rejected.
 
 ### Discharge Water Flow Monitor
 
@@ -281,12 +281,19 @@ The firmware reports a rejected command as `"status":"error"` and `msg` rather t
 
 ### Bin Height Measurement
 
+Agreed with `firmware/Bin-Height-Measurement-Firmware`, whose field and command names are the source of truth. Uses a JDY-23 serial module (section 1). The device has no clock: `timestamp` is `0` until `set_time` is sent.
+
 | Kind | Name | Type / reply |
 | --- | --- | --- |
-| Field | `height` | number (m, sensor to material surface) |
-| Field | `bin_height` | number (m) |
-| Action | `get_reading` | replies `height` |
-| Setting | `set_bin_height` | number (m); replies `bin_height` |
+| Field | `material_height` | number (raw 12-bit ADC reading, 0–4095; not yet calibrated to m) |
+| Field | `time_synced` | boolean, whether `set_time` has been received |
+| Field | `sample_period_ms` | number (ms), how often a sample is sent |
+| Periodic | every `sample_period_ms` | `material_height` |
+| Action | `read_now` | replies `material_height` |
+| Action | `get_config` | replies `time_synced`, `sample_period_ms` |
+| Action | `reset_config` | clears the stored device ID (falls back to the MCU unique ID); replies `time_synced`, `sample_period_ms` |
+| Setting | `set_time` | number (epoch ms); replies `time_synced` |
+| Setting | `set_device_id` | string, 1–127 characters; replies `time_synced`, `sample_period_ms` with the new `deviceId` |
 
 ## 7. Firmware checklist
 
