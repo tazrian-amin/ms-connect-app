@@ -14,7 +14,15 @@ function resolveBuildId(phase: string): string {
     const file = join(process.cwd(), ".next", "required-server-files.json");
     return JSON.parse(readFileSync(file, "utf8")).config.deploymentId;
   }
-  return new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
+  // A build evaluates this file more than once (Vercel does it before `next build`, and passes
+  // the result on as NEXT_DEPLOYMENT_ID). Each evaluation must agree, or the build fails when
+  // the clock ticks over a second between them, so the first one records its ID for the rest.
+  process.env.NEXT_DEPLOYMENT_ID ||= new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replace(/[-:]/g, "")
+    .replace("T", "-");
+  return process.env.NEXT_DEPLOYMENT_ID;
 }
 
 export default function nextConfig(phase: string): NextConfig {
