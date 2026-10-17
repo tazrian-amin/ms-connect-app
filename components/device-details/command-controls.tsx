@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -29,6 +28,7 @@ import type {
 import { useConnectionState, useDeviceMessages, useLastSent } from "@/lib/bluetooth/hooks";
 import type { DeviceMessenger } from "@/lib/bluetooth/messaging";
 import { useEditMode } from "@/lib/edit-mode";
+import { showError } from "@/lib/error-toast";
 
 type FieldValue = string | number | boolean;
 
@@ -41,27 +41,25 @@ function useCommandSender<C extends CommandSet>(messenger: DeviceMessenger<C>, n
   const { status } = useConnectionState(messenger.connection);
   const editing = useEditMode(messenger.connection);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useDeviceMessages(messenger, ({ data }) => {
-    if (data.error !== undefined && data.cmd === name) setError(`The device rejected this: ${data.error}`);
+    if (data.error !== undefined && data.cmd === name) showError(`The device rejected this: ${data.error}`);
   });
 
   async function send(write: () => Promise<void>): Promise<boolean> {
     setPending(true);
-    setError(null);
     try {
       await write();
       return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The device did not accept the command.");
+      showError(cause instanceof Error ? cause.message : "The device did not accept the command.");
       return false;
     } finally {
       setPending(false);
     }
   }
 
-  return { send, pending, error, setError, enabled: status === "connected" && (editing || !requiresEditMode) };
+  return { send, pending, enabled: status === "connected" && (editing || !requiresEditMode) };
 }
 
 type SettingFormProps<C extends CommandSet, S extends SettingName<C>> = {
@@ -99,7 +97,7 @@ export function SettingForm<C extends CommandSet, S extends SettingName<C>>({
   submitLabel = "Apply",
   ...config
 }: SettingFormProps<C, S>) {
-  const { send, pending, error, setError, enabled } = useCommandSender(messenger, setting);
+  const { send, pending, enabled } = useCommandSender(messenger, setting);
   const lastSent = useLastSent(messenger, setting);
   // Only what the user has changed; otherwise the current value is shown.
   const [draft, setDraft] = useState<FieldValue | null>(null);
@@ -108,7 +106,6 @@ export function SettingForm<C extends CommandSet, S extends SettingName<C>>({
   if (draftEnabled !== enabled) {
     setDraftEnabled(enabled);
     setDraft(null);
-    setError(null);
   }
 
   const type = messenger.commands.settings[setting];
@@ -118,7 +115,7 @@ export function SettingForm<C extends CommandSet, S extends SettingName<C>>({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const parsed = parseValue(value, type, config);
-    if (typeof parsed === "object") return setError(parsed.problem);
+    if (typeof parsed === "object") return showError(parsed.problem);
     if (await send(() => messenger.sendSetting(setting, parsed as SettingValue<C, S>))) setDraft(null);
   }
 
@@ -148,11 +145,6 @@ export function SettingForm<C extends CommandSet, S extends SettingName<C>>({
         />
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
       <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
         <Button
           type="submit"
@@ -279,7 +271,7 @@ export function ActionButton<C extends CommandSet>({
   confirm,
   requiresEditMode = true,
 }: ActionButtonProps<C>) {
-  const { send, pending, error, setError, enabled } = useCommandSender(messenger, action, requiresEditMode);
+  const { send, pending, enabled } = useCommandSender(messenger, action, requiresEditMode);
   const [confirming, setConfirming] = useState(false);
 
   const sendCommand = () => {
@@ -299,11 +291,6 @@ export function ActionButton<C extends CommandSet>({
       >
         {label}
       </Button>
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ alignSelf: "stretch" }}>
-          {error}
-        </Alert>
-      )}
       {confirm && (
         <Dialog open={confirming} onClose={() => setConfirming(false)}>
           <DialogTitle>{label}?</DialogTitle>

@@ -41,7 +41,7 @@ export function ConnectionSection({ slug, connection }: ConnectionSectionProps) 
 
 function ConnectionCard({ connection }: { connection: BluetoothConnection<StandardCharacteristic> }) {
   const support = useBluetoothSupport();
-  const { status, deviceName, error } = useConnectionState(connection);
+  const { status, deviceName } = useConnectionState(connection);
 
   const supportMessage = supportMessages[support];
   const busy = status === "requesting" || status === "connecting";
@@ -116,11 +116,6 @@ function ConnectionCard({ connection }: { connection: BluetoothConnection<Standa
         <Alert severity="warning" sx={{ mt: 2 }}>
           Edit mode is on. Changes you apply are sent to the device. Disable edits before leaving this page or
           disconnecting.
-        </Alert>
-      )}
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
         </Alert>
       )}
       {status === "connected" && <DeviceInfo connection={connection} />}

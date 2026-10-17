@@ -4,6 +4,7 @@ import { conveyorVolumetricScaleProProfile } from "@/lib/conveyor-volumetric-sca
 import { dewaterPumpFloatReplacementProfile } from "@/lib/dewater-pump-float-replacement/bluetooth-profile";
 import { dewaterWaterLevelMonitorProfile } from "@/lib/dewater-water-level-monitor/bluetooth-profile";
 import { dischargeWaterFlowMonitorProfile } from "@/lib/discharge-water-flow-monitor/bluetooth-profile";
+import { showError } from "@/lib/error-toast";
 import { getDevice } from "@/lib/homepage/devices";
 import { BluetoothConnection, type ConnectionStatus } from "./connection";
 import type { DeviceProfile, MessagingCharacteristic, StandardCharacteristic } from "./profile";
@@ -67,6 +68,7 @@ export function getConnection<K extends string>(
       findOtherUser: (device) => findOtherUser(device, created),
     });
     created.subscribeState(notifyActivity);
+    reportErrors(created);
     instances.set(id, created);
     connection = created;
   }
@@ -81,6 +83,16 @@ export function releaseConnection(profile: DeviceProfile, instanceId: string): v
   connection.disconnect();
   connections.get(profile)?.delete(instanceId);
   notifyActivity();
+}
+
+/** Shows each new connection error as a toast, wherever the user is in the app. */
+function reportErrors(connection: BluetoothConnection) {
+  let last = connection.getState().error;
+  connection.subscribeState(() => {
+    const { error } = connection.getState();
+    if (error && error !== last) showError(error);
+    last = error;
+  });
 }
 
 function notifyActivity() {

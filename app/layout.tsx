@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UnloadGuard } from "@/components/bluetooth/unload-guard";
 import { AppUpdater } from "@/components/providers/app-updater";
+import { ErrorToast } from "@/components/providers/error-toast";
 import { OfflineNavigation } from "@/components/providers/offline-navigation";
 import { Providers } from "@/components/providers/providers";
 import { Footer } from "@/components/layout/footer";
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <Footer />
           <AppUpdater />
+          <ErrorToast />
           <OfflineNavigation />
           <UnloadGuard />
         </Providers>
