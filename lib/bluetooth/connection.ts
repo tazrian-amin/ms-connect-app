@@ -7,7 +7,7 @@ export type ConnectionStatus = "disconnected" | "requesting" | "connecting" | "c
 
 export type ConnectionState = {
   status: ConnectionStatus;
-  /** Name the hardware advertises, once the user has picked it. */
+  /** Name the hardware advertises, from when the user picks it until the link is disconnected. */
   deviceName: string | null;
   error: string | null;
 };
@@ -276,6 +276,8 @@ export class BluetoothConnection<K extends string = string> {
       bleLog("connection", `${this.#state.status} → ${patch.status}`);
     }
     if (patch.error) bleLog("connection", `error shown: ${patch.error}`);
+    // A name only describes a live (or in-progress) link; don't keep showing the last device once it's gone.
+    if (patch.status === "disconnected") patch = { ...patch, deviceName: null };
     this.#state = { ...this.#state, ...patch };
     this.#stateListeners.forEach((listener) => listener());
   }
