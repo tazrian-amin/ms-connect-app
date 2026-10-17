@@ -294,6 +294,7 @@ Agreed with `firmware/Bin-Height-Measurement-Firmware`, whose field and command 
 | Action | `reset_config` | clears the stored device ID (falls back to the MCU unique ID); replies `time_synced`, `sample_period_ms` |
 | Setting | `set_time` | number (epoch ms); replies `time_synced` |
 | Setting | `set_device_id` | string, 1–127 characters; replies `time_synced`, `sample_period_ms` with the new `deviceId` |
+| Setting | `set_sample_period_ms` | number (ms), 1000–3600000, stored on the device; replies `time_synced`, `sample_period_ms` |
 
 ## 7. Firmware checklist
 

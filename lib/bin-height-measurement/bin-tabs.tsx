@@ -136,7 +136,7 @@ export function BinTabs({ bins, selectedId, onSelect, onAdd, onRename, onRemove,
         </SortableContext>
       </DndContext>
       <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0, alignItems: "center", pb: { xs: 1.5, sm: 0 } }}>
-        <Button variant="outlined" startIcon={<AddIcon />} onClick={unlessEditing(() => setAdding(true))}>
+        <Button variant="contained" disableElevation startIcon={<AddIcon />} onClick={unlessEditing(() => setAdding(true))}>
           Add bin
         </Button>
         <IconButton

@@ -61,7 +61,8 @@ const emptyState = { deviceId: null, data: {}, updatedAt: null };
  */
 export class DeviceMessenger<C extends CommandSet> {
   readonly connection: BluetoothConnection<MessagingCharacteristic>;
-  readonly commands: C;
+  /** Replaced only by `getMessenger` when the command set is hot-reloaded in development. */
+  commands: C;
 
   #listeners = new Set<MessageListener<C>>();
   #stateListeners = new Set<() => void>();
@@ -255,6 +256,9 @@ export function getMessenger<C extends CommandSet>(
   if (!messenger) {
     messenger = new DeviceMessenger(connection, commands);
     messengers.set(connection, messenger);
+  } else if (messenger.commands !== commands) {
+    // The command set module was hot-reloaded; keep the link's state but validate with the new names.
+    messenger.commands = commands;
   }
   return messenger;
 }

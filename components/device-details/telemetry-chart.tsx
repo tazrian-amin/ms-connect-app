@@ -4,6 +4,7 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import { ChartsReferenceLine } from "@mui/x-charts/ChartsReferenceLine";
 import { LineChart } from "@mui/x-charts/LineChart";
+import type { HistoryPoint } from "@/lib/bluetooth/history";
 
 /** A fixed level drawn across a chart, e.g. an alarm threshold. */
 export type TelemetryThreshold = {
@@ -78,10 +79,17 @@ type TelemetryChartProps = {
   title: string;
   /** Unit of the plotted values, shown on the y axis. */
   unit?: string;
+  /** Readings to plot, oldest first, e.g. from `useFieldHistory`. Empty until there are any. */
+  points?: HistoryPoint[];
+  /** Fixes the y axis to this range, e.g. the sensor's full range. */
+  min?: number;
+  max?: number;
+  /** Shown in the plot area while there is nothing to plot. */
+  emptyMessage?: string;
 };
 
-/** Line chart of one quantity over time, in its own titled frame. Currently always empty. */
-export function TelemetryChart({ title, unit }: TelemetryChartProps) {
+/** Line chart of one quantity over time, in its own titled frame. */
+export function TelemetryChart({ title, unit, points = [], min, max, emptyMessage }: TelemetryChartProps) {
   return (
     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
       <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600 }}>
@@ -89,10 +97,11 @@ export function TelemetryChart({ title, unit }: TelemetryChartProps) {
       </Typography>
       <LineChart
         height={240}
-        series={[{ data: [], label: title, showMark: false }]}
-        xAxis={[{ scaleType: "time", data: [] }]}
-        yAxis={[{ label: unit }]}
+        series={[{ data: points.map((point) => point.value), label: title, showMark: false }]}
+        xAxis={[{ scaleType: "time", data: points.map((point) => new Date(point.time)) }]}
+        yAxis={[{ label: unit, min, max }]}
         hideLegend
+        localeText={emptyMessage ? { noData: emptyMessage } : undefined}
       />
     </Paper>
   );
