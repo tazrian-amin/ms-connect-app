@@ -4,7 +4,7 @@ import type { BluetoothConnection } from "@/lib/bluetooth/connection";
 /*
  * Edit mode guards a device's settings against accidental changes. Controls that change the
  * device stay disabled until the user turns edit mode on for that device's connection. While it
- * is on, leaving the page or disconnecting is blocked (see EditModeGuard) and a warning explains why.
+ * is on, leaving the page or disconnecting is blocked (see NavigationGuard) and a warning explains why.
  *
  * Only one connection can be in edit mode at a time, since leaving its page is blocked.
  */

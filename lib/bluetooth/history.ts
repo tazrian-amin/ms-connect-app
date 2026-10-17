@@ -16,12 +16,16 @@ const noPoints: HistoryPoint[] = [];
 
 /**
  * Readings of one field, kept for the rest of the session (across reconnects and remounts) so a
- * chart picks up where it left off. Records only while something is subscribed.
+ * chart picks up where it left off. Records only while something is subscribed. Readings from a
+ * demo (see ./demo.ts) never mix with real ones, and are dropped when the demo ends.
  */
 class FieldHistory {
   #points = noPoints;
   #listeners = new Set<() => void>();
   #unsubscribe: (() => void) | null = null;
+  #unsubscribeState: (() => void) | null = null;
+  // Whether `#points` came from a demo.
+  #demo = false;
 
   constructor(
     private readonly messenger: DeviceMessenger<CommandSet>,
@@ -32,9 +36,12 @@ class FieldHistory {
 
   subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
+    this.#unsubscribeState ??= this.messenger.connection.subscribeState(this.#checkSource);
+    this.#checkSource();
     this.#unsubscribe ??= this.messenger.subscribe(({ timestamp, data }) => {
       const value = (data as Record<string, unknown>)[this.field];
       if (typeof value !== "number") return;
+      this.#checkSource();
       this.#points = [...this.#points, { time: timestamp, value }].slice(-MAX_POINTS);
       this.#listeners.forEach((notify) => notify());
     });
@@ -43,7 +50,19 @@ class FieldHistory {
       if (this.#listeners.size > 0) return;
       this.#unsubscribe?.();
       this.#unsubscribe = null;
+      this.#unsubscribeState?.();
+      this.#unsubscribeState = null;
     };
+  };
+
+  /** Starts over when the link switches between a demo and real hardware. */
+  #checkSource = () => {
+    const { demo } = this.messenger.connection.getState();
+    if (demo === this.#demo) return;
+    this.#demo = demo;
+    if (this.#points === noPoints) return;
+    this.#points = noPoints;
+    this.#listeners.forEach((notify) => notify());
   };
 }
 

@@ -10,6 +10,7 @@ import { DeviceDetailsLayout } from "@/components/device-details/device-details-
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
 import { dischargeWaterFlowMonitorCommands } from "@/lib/bluetooth/commands/discharge-water-flow-monitor";
+import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { dischargeWaterFlowMonitorProfile } from "./bluetooth-profile";
@@ -17,6 +18,8 @@ import { dischargeWaterFlowMonitorProfile } from "./bluetooth-profile";
 export function DischargeWaterFlowMonitorDetails() {
   const messenger = getMessenger(dischargeWaterFlowMonitorProfile, dischargeWaterFlowMonitorCommands);
   const { data, updatedAt } = useDeviceState(messenger);
+  const flowRates = useFieldHistory(messenger, "flow_rate");
+  const totalVolumes = useFieldHistory(messenger, "total_volume");
 
   return (
     <DeviceDetailsLayout
@@ -52,8 +55,8 @@ export function DischargeWaterFlowMonitorDetails() {
       }
       telemetry={
         <TelemetrySection>
-          <TelemetryChart title="Flow rate" unit="L/min" />
-          <TelemetryChart title="Total volume" unit="L" />
+          <TelemetryChart title="Flow rate" unit="L/min" points={flowRates} />
+          <TelemetryChart title="Total volume" unit="L" points={totalVolumes} />
         </TelemetrySection>
       }
     />

@@ -10,6 +10,7 @@ import { DeviceDetailsLayout } from "@/components/device-details/device-details-
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
 import { conveyorVolumetricScaleProCommands } from "@/lib/bluetooth/commands/conveyor-volumetric-scale-pro";
+import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { conveyorVolumetricScaleProProfile } from "./bluetooth-profile";
@@ -17,6 +18,8 @@ import { conveyorVolumetricScaleProProfile } from "./bluetooth-profile";
 export function ConveyorVolumetricScaleProDetails() {
   const messenger = getMessenger(conveyorVolumetricScaleProProfile, conveyorVolumetricScaleProCommands);
   const { data, updatedAt } = useDeviceState(messenger);
+  const volumeRates = useFieldHistory(messenger, "volume_rate");
+  const massRates = useFieldHistory(messenger, "mass_rate");
 
   return (
     <DeviceDetailsLayout
@@ -64,8 +67,8 @@ export function ConveyorVolumetricScaleProDetails() {
       }
       telemetry={
         <TelemetrySection>
-          <TelemetryChart title="Volume rate" unit="m³/h" />
-          <TelemetryChart title="Mass rate" unit="t/h" />
+          <TelemetryChart title="Volume rate" unit="m³/h" points={volumeRates} />
+          <TelemetryChart title="Mass rate" unit="t/h" points={massRates} />
         </TelemetrySection>
       }
     />

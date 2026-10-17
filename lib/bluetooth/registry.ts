@@ -1,12 +1,19 @@
 import { binHeightMeasurementProfile } from "@/lib/bin-height-measurement/bluetooth-profile";
+import { createBinHeightMeasurementDemo } from "@/lib/bin-height-measurement/demo";
 import { conveyorVolumetricScaleProfile } from "@/lib/conveyor-volumetric-scale/bluetooth-profile";
+import { createConveyorVolumetricScaleDemo } from "@/lib/conveyor-volumetric-scale/demo";
 import { conveyorVolumetricScaleProProfile } from "@/lib/conveyor-volumetric-scale-pro/bluetooth-profile";
+import { createConveyorVolumetricScaleProDemo } from "@/lib/conveyor-volumetric-scale-pro/demo";
 import { dewaterPumpFloatReplacementProfile } from "@/lib/dewater-pump-float-replacement/bluetooth-profile";
+import { createDewaterPumpFloatReplacementDemo } from "@/lib/dewater-pump-float-replacement/demo";
 import { dewaterWaterLevelMonitorProfile } from "@/lib/dewater-water-level-monitor/bluetooth-profile";
+import { createDewaterWaterLevelMonitorDemo } from "@/lib/dewater-water-level-monitor/demo";
 import { dischargeWaterFlowMonitorProfile } from "@/lib/discharge-water-flow-monitor/bluetooth-profile";
+import { createDischargeWaterFlowMonitorDemo } from "@/lib/discharge-water-flow-monitor/demo";
 import { showError } from "@/lib/error-toast";
 import { getDevice } from "@/lib/homepage/devices";
 import { BluetoothConnection, type ConnectionStatus } from "./connection";
+import type { DemoSimulator } from "./demo";
 import type { DeviceProfile, MessagingCharacteristic, StandardCharacteristic } from "./profile";
 
 /**
@@ -20,6 +27,16 @@ export const deviceProfiles: Record<string, DeviceProfile<StandardCharacteristic
   "conveyor-volumetric-scale": conveyorVolumetricScaleProfile,
   "conveyor-volumetric-scale-pro": conveyorVolumetricScaleProProfile,
   "bin-height-measurement": binHeightMeasurementProfile,
+};
+
+/** Creates a fresh simulator for each device slug that has a demo (see ./demo.ts). */
+export const deviceDemos: Partial<Record<string, () => DemoSimulator>> = {
+  "discharge-water-flow-monitor": createDischargeWaterFlowMonitorDemo,
+  "dewater-water-level-monitor": createDewaterWaterLevelMonitorDemo,
+  "dewater-pump-float-replacement": createDewaterPumpFloatReplacementDemo,
+  "conveyor-volumetric-scale": createConveyorVolumetricScaleDemo,
+  "conveyor-volumetric-scale-pro": createConveyorVolumetricScaleProDemo,
+  "bin-height-measurement": createBinHeightMeasurementDemo,
 };
 
 /**
@@ -117,12 +134,31 @@ export function disconnectAll(): void {
   for (const [, connection] of allConnections()) connection.disconnect();
 }
 
-/** True while any device is linked or being linked; app updates wait until this is false. */
+/**
+ * True while any real device is linked or being linked; app updates wait until this is false.
+ * A demo doesn't count, since a reload loses nothing that matters.
+ */
 export function isAnyDeviceLinked(): boolean {
   for (const [, connection] of allConnections()) {
-    if (connection.getState().status !== "disconnected") return true;
+    const { status, demo } = connection.getState();
+    if (status !== "disconnected" && !demo) return true;
   }
   return false;
+}
+
+/** True while any connection is linked to a demo device rather than real hardware. */
+export function isAnyDemoRunning(): boolean {
+  for (const [, connection] of allConnections()) {
+    if (connection.getState().demo) return true;
+  }
+  return false;
+}
+
+/** Ends every running demo. */
+export function endAllDemos(): void {
+  for (const [, connection] of allConnections()) {
+    if (connection.getState().demo) connection.disconnect();
+  }
 }
 
 // How far along each status is, so a device type with several links reports its most active one.
@@ -134,12 +170,15 @@ const statusRank: Record<ConnectionStatus, number> = {
   connected: 4,
 };
 
-/** The most active status among all of a profile's connections, e.g. for its card on the homepage. */
+/**
+ * The most active status among all of a profile's real connections, e.g. for its card on the
+ * homepage. Demos are left out, so a card never shows a simulated device as connected.
+ */
 export function getProfileStatus(profile: DeviceProfile): ConnectionStatus {
   let status: ConnectionStatus = "disconnected";
   for (const connection of connections.get(profile)?.values() ?? []) {
-    const current = connection.getState().status;
-    if (statusRank[current] > statusRank[status]) status = current;
+    const { status: current, demo } = connection.getState();
+    if (!demo && statusRank[current] > statusRank[status]) status = current;
   }
   return status;
 }

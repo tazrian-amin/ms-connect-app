@@ -1,0 +1,180 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import Chip from "@mui/material/Chip";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import MailOutlineIcon from "@mui/icons-material/MailOutlined";
+import { CONTACT_EMAIL, contactEmailHref, openContactEmail } from "@/lib/contact";
+import { devices } from "./devices";
+
+const MESSAGE_MAX_LENGTH = 2_000;
+const FIELD_MAX_LENGTH = 100;
+
+const topics = [
+  { id: "learn", label: "Learn more", subject: "Enquiry" },
+  { id: "order", label: "Place an order", subject: "Order enquiry" },
+  { id: "custom", label: "Customization", subject: "Customization request" },
+  { id: "feedback", label: "Feedback", subject: "Feedback" },
+  { id: "other", label: "Something else", subject: "Message" },
+] as const;
+
+type TopicId = (typeof topics)[number]["id"];
+
+/**
+ * The homepage's invitation to get in touch: to learn about or order devices the visitor doesn't
+ * have yet, ask for something made to their needs, or share feedback. Sending opens the visitor's
+ * email app with the message filled in (see lib/contact.ts).
+ */
+export function ContactSection() {
+  const [topic, setTopic] = useState<TopicId>("learn");
+  const [interested, setInterested] = useState<string[]>([]);
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [message, setMessage] = useState("");
+  const chosenTopic = topics.find(({ id }) => id === topic) ?? topics[0];
+  const chosenDevices = devices.filter(({ slug }) => interested.includes(slug));
+  const filledIn = message.trim() !== "" || chosenDevices.length > 0;
+
+  const toggleDevice = (slug: string) =>
+    setInterested((current) => (current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]));
+
+  const send = () => {
+    const about = chosenDevices.length === 1 ? `: ${chosenDevices[0].name}` : "";
+    openContactEmail(`${chosenTopic.subject}${about}`, [
+      `Topic: ${chosenTopic.label}`,
+      chosenDevices.length > 0 && `Devices: ${chosenDevices.map((device) => device.name).join(", ")}`,
+      name.trim() && `Name: ${name.trim()}`,
+      company.trim() && `Company: ${company.trim()}`,
+      message.trim() && `\n${message.trim()}`,
+      "\nSent from the MS Connect app.",
+    ]);
+  };
+
+  return (
+    <Card
+      component="section"
+      aria-labelledby="contact-us"
+      variant="outlined"
+      sx={{ mt: { xs: 5, sm: 6 }, borderRadius: 2, p: { xs: 2, sm: 3, md: 4 } }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gap: { xs: 3, md: 6 },
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 2fr) minmax(0, 3fr)" },
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Typography
+            id="contact-us"
+            variant="h5"
+            component="h2"
+            sx={{ fontWeight: 500, fontSize: { xs: "1.125rem", sm: "1.25rem" } }}
+          >
+            Get in Touch
+          </Typography>
+          <Typography sx={{ color: "text.secondary", fontSize: { xs: "0.9375rem", sm: "1rem" } }}>
+            Interested in a device you don&apos;t have yet? Want to place an order, need something customized for
+            your site, or have feedback for us? Tell us and we&apos;ll get back to you.
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Prefer to write yourself? Email us at <Link href={contactEmailHref()}>{CONTACT_EMAIL}</Link>.
+          </Typography>
+        </Stack>
+
+        <Stack spacing={2.5}>
+          <ChipGroup label="What can we help with?">
+            {topics.map(({ id, label }) => (
+              <Chip
+                key={id}
+                label={label}
+                clickable
+                color={topic === id ? "primary" : "default"}
+                variant={topic === id ? "filled" : "outlined"}
+                aria-pressed={topic === id}
+                onClick={() => setTopic(id)}
+              />
+            ))}
+          </ChipGroup>
+
+          <ChipGroup label="Devices you're interested in (optional)">
+            {devices.map(({ slug, name: deviceName }) => {
+              const selected = interested.includes(slug);
+              return (
+                <Chip
+                  key={slug}
+                  label={deviceName}
+                  clickable
+                  color={selected ? "primary" : "default"}
+                  variant={selected ? "filled" : "outlined"}
+                  aria-pressed={selected}
+                  onClick={() => toggleDevice(slug)}
+                />
+              );
+            })}
+          </ChipGroup>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+              label="Your name (optional)"
+              value={name}
+              onChange={(event) => setName(event.target.value.slice(0, FIELD_MAX_LENGTH))}
+              autoComplete="name"
+              fullWidth
+            />
+            <TextField
+              label="Company (optional)"
+              value={company}
+              onChange={(event) => setCompany(event.target.value.slice(0, FIELD_MAX_LENGTH))}
+              autoComplete="organization"
+              fullWidth
+            />
+          </Stack>
+
+          <TextField
+            label="Message"
+            placeholder="Tell us what you need, e.g. quantities, your site, or the changes you'd like."
+            multiline
+            minRows={4}
+            value={message}
+            onChange={(event) => setMessage(event.target.value.slice(0, MESSAGE_MAX_LENGTH))}
+          />
+
+          <Box>
+            <Button
+              variant="contained"
+              disableElevation
+              size="large"
+              startIcon={<MailOutlineIcon />}
+              disabled={!filledIn}
+              onClick={send}
+            >
+              Email us
+            </Button>
+            <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 1 }}>
+              Opens your email app with your message filled in. Nothing is sent until you press send there.
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
+    </Card>
+  );
+}
+
+/** A labelled, wrapping row of chips. */
+function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Box role="group" aria-label={label}>
+      <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+        {label}
+      </Typography>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>{children}</Box>
+    </Box>
+  );
+}

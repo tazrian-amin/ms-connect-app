@@ -1,5 +1,6 @@
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
+import { ContactSection } from "@/lib/homepage/contact-section";
 import { DeviceCatalog } from "@/lib/homepage/device-catalog";
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
       </Typography>
 
       <DeviceCatalog />
+      <ContactSection />
     </Container>
   );
 }

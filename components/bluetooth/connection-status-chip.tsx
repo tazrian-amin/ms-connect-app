@@ -9,7 +9,10 @@ const statusChips: Record<ConnectionStatus, { label: string; color: ChipProps["c
   reconnecting: { label: "Reconnecting…", color: "warning" },
 };
 
-export function ConnectionStatusChip({ status }: { status: ConnectionStatus }) {
-  const { label, color } = statusChips[status];
+const demoChip = { label: "Demo", color: "secondary" } as const;
+
+/** `demo` marks a connected simulated device (see lib/bluetooth/demo.ts). */
+export function ConnectionStatusChip({ status, demo = false }: { status: ConnectionStatus; demo?: boolean }) {
+  const { label, color } = demo && status === "connected" ? demoChip : statusChips[status];
   return <Chip size="small" label={label} color={color} />;
 }
