@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
 import { ControlSection } from "@/components/device-details/control-section";
@@ -15,8 +16,10 @@ import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useConnectionState, useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { IndustrialBinHopper } from "./bin-dashboard/industrial-bin-hopper";
+import { DEFAULT_MATERIAL_COLOR } from "./bin-dashboard/material-colors";
+import { MaterialColorSelect } from "./bin-dashboard/material-color-select";
 import { BinTabs } from "./bin-tabs";
-import { addBin, moveBin, removeBin, renameBin, useBins, type Bin } from "./bins";
+import { addBin, moveBin, removeBin, renameBin, setBinMaterialColor, useBins, type Bin } from "./bins";
 import { binHeightMeasurementProfile } from "./bluetooth-profile";
 
 /** Full scale of the sensor's 12-bit ADC reading. */
@@ -78,6 +81,7 @@ function BinDetails({ bin }: { bin: Bin }) {
   const { status } = useConnectionState(messenger.connection);
   const heights = useFieldHistory(messenger, "material_height");
   const connected = status === "connected";
+  const materialColor = bin.materialColor ?? DEFAULT_MATERIAL_COLOR;
 
   // As soon as the link is up, set the device clock (it has none, so samples carry its timestamps
   // from then on) and ask for the stored interval, so the settings show it.
@@ -111,13 +115,19 @@ function BinDetails({ bin }: { bin: Bin }) {
         <DashboardSection
           updatedAt={updatedAt}
           action={
-            <ActionButton
-              messenger={messenger}
-              action="read_now"
-              label="Refresh"
-              icon={<RefreshIcon />}
-              requiresEditMode={false}
-            />
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", justifyContent: "flex-end" }}>
+              <MaterialColorSelect
+                value={materialColor}
+                onChange={(color) => setBinMaterialColor(bin.id, color)}
+              />
+              <ActionButton
+                messenger={messenger}
+                action="read_now"
+                label="Refresh"
+                icon={<RefreshIcon />}
+                requiresEditMode={false}
+              />
+            </Stack>
           }
         >
           <DashboardWidget label="Fill level" sx={{ gridColumn: "1 / -1" }}>
@@ -131,6 +141,7 @@ function BinDetails({ bin }: { bin: Bin }) {
               }
               capacity={ADC_MAX}
               loadUnitLabel="ADC"
+              materialColor={materialColor}
             />
           </DashboardWidget>
         </DashboardSection>

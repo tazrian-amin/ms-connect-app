@@ -1,319 +1,157 @@
 "use client";
 
-import { useId, useMemo } from "react";
+import { useId } from "react";
+import { DEFAULT_MATERIAL_COLOR, shadeHex } from "./material-colors";
 
 export interface IndustrialBinHopperProps {
   /** 0–100, or null before any reading: the bin is drawn empty with no value. */
   fillLevel: number | null;
   /** Used with fillLevel to show "current load" (e.g. tons or ADC counts). */
   capacity: number;
-  width?: number;
   /** Label for the load derived from capacity (e.g. "counts" or "tons"). */
   loadUnitLabel?: string;
+  /** #rrggbb colour the material is drawn in, shaded for depth from top to bottom. */
+  materialColor?: string;
 }
 
-function clamp01(n: number) {
-  return Math.min(100, Math.max(0, n));
-}
-
-function getFillBadgeColor(fill: number) {
-  if (fill >= 80) return "#d32f2f";
-  if (fill >= 50) return "#f57c00";
-  if (fill >= 25) return "#388e3c";
-  return "#1976d2";
-}
-
-// Bin material fill - cool charcoal, subtle top-to-bottom depth.
-const MATERIAL_FILL_TOP = "#4a4d52";
-const MATERIAL_FILL_BOTTOM = "#2e3034";
-// zinc-500, legible against both light and dark card backgrounds.
+// zinc-500, legible against both light and dark card backgrounds; also the fill badge's background.
 const LABEL_FILL = "#71717a";
+const STROKE = "#424242";
 
-function buildFillPath(params: {
-  hopperOffsetX: number;
-  width: number;
-  topY: number;
-  section1Y: number;
-  section2Y: number;
-  section3Y: number;
-  bottomY: number;
-  dischargeY: number;
-  topWidth: number;
-  midTopWidth: number;
-  midBottomWidth: number;
-  bottomWidth: number;
-  dischargeWidth: number;
-  fillHeight: number;
-}): string {
-  const {
-    hopperOffsetX,
-    width,
-    topY,
-    section1Y,
-    section2Y,
-    section3Y,
-    bottomY,
-    dischargeY,
-    topWidth,
-    midTopWidth,
-    midBottomWidth,
-    bottomWidth,
-    dischargeWidth,
-    fillHeight,
-  } = params;
+const BODY_W = 300;
+const LEFT_LABEL_GUTTER = 52;
+const RIGHT_MARGIN = 20;
+const SVG_W = LEFT_LABEL_GUTTER + BODY_W + RIGHT_MARGIN;
+const CENTER_X = LEFT_LABEL_GUTTER + BODY_W / 2;
 
-  if (fillHeight <= 0) return "";
+type ProfilePoint = { y: number; w: number };
 
-  const fillTopY = dischargeY - fillHeight;
+/** The hopper's outline from top to discharge: its width at each joint between sections. */
+const PROFILE: ProfilePoint[] = [
+  { y: 8, w: BODY_W * 0.85 },
+  { y: 68, w: BODY_W * 0.78 },
+  { y: 148, w: BODY_W * 0.78 },
+  { y: 228, w: BODY_W * 0.5 },
+  { y: 288, w: BODY_W * 0.25 },
+  { y: 318, w: BODY_W * 0.15 },
+];
+const [TOP, SECTION_1, SECTION_2] = PROFILE;
+const TOP_Y = TOP.y;
+const DISCHARGE_Y = PROFILE[PROFILE.length - 1].y;
+const TOTAL_H = DISCHARGE_Y - TOP_Y;
+const BADGE_TOP = DISCHARGE_Y + 8;
+const SVG_H = BADGE_TOP + 30;
 
-  const getWidthAtY = (y: number) => {
-    if (y >= dischargeY) return dischargeWidth;
-    if (y >= bottomY) {
-      const progress = (y - bottomY) / (dischargeY - bottomY);
-      return bottomWidth + (dischargeWidth - bottomWidth) * progress;
-    }
-    if (y >= section3Y) {
-      const progress = (y - section3Y) / (bottomY - section3Y);
-      return midBottomWidth + (bottomWidth - midBottomWidth) * progress;
-    }
-    if (y >= section2Y) {
-      const progress = (y - section2Y) / (section3Y - section2Y);
-      return midTopWidth + (midBottomWidth - midTopWidth) * progress;
-    }
-    if (y >= section1Y) {
-      return midTopWidth;
-    }
-    if (y >= topY) {
-      const progress = (y - topY) / (section1Y - topY);
-      return topWidth + (midTopWidth - topWidth) * progress;
-    }
-    return topWidth;
-  };
+/** Trapezoid between two outline points, centred on the hopper. */
+function trapezoid(top: ProfilePoint, bottom: ProfilePoint): string {
+  return `M ${CENTER_X - top.w / 2} ${top.y} L ${CENTER_X + top.w / 2} ${top.y} L ${CENTER_X + bottom.w / 2} ${bottom.y} L ${CENTER_X - bottom.w / 2} ${bottom.y} Z`;
+}
 
-  const fillTopWidth = getWidthAtY(fillTopY);
-
-  let fillPath = `M ${hopperOffsetX + (width - fillTopWidth) / 2} ${fillTopY} `;
-  fillPath += `L ${hopperOffsetX + (width + fillTopWidth) / 2} ${fillTopY} `;
-
-  const segments = [
-    { y: section1Y, w: midTopWidth },
-    { y: section2Y, w: midTopWidth },
-    { y: section3Y, w: midBottomWidth },
-    { y: bottomY, w: bottomWidth },
-    { y: dischargeY, w: dischargeWidth },
-  ];
-
-  for (const seg of segments) {
-    if (seg.y > fillTopY) {
-      fillPath += `L ${hopperOffsetX + (width + seg.w) / 2} ${seg.y} `;
-    }
+/** The hopper's width at height `y`, interpolated along the section it falls in. */
+function widthAt(y: number): number {
+  for (let i = 1; i < PROFILE.length; i++) {
+    const a = PROFILE[i - 1];
+    const b = PROFILE[i];
+    if (y <= b.y) return a.w + ((b.w - a.w) * (y - a.y)) / (b.y - a.y);
   }
+  return PROFILE[PROFILE.length - 1].w;
+}
 
-  for (let i = segments.length - 1; i >= 0; i--) {
-    const seg = segments[i];
-    if (seg && seg.y > fillTopY) {
-      fillPath += `L ${hopperOffsetX + (width - seg.w) / 2} ${seg.y} `;
-    }
-  }
-
-  fillPath += "Z";
-  return fillPath;
+/** Outline of material filled to `fillHeight` above the discharge, following the hopper's walls. */
+function buildFillPath(fillHeight: number): string {
+  const fillTopY = DISCHARGE_Y - fillHeight;
+  const points = [{ y: fillTopY, w: widthAt(fillTopY) }, ...PROFILE.filter((p) => p.y > fillTopY)];
+  const right = points.map((p) => `${CENTER_X + p.w / 2} ${p.y}`);
+  const left = points.reverse().map((p) => `${CENTER_X - p.w / 2} ${p.y}`);
+  return `M ${[...right, ...left].join(" L ")} Z`;
 }
 
 export function IndustrialBinHopper({
   fillLevel,
   capacity,
-  width = 300,
   loadUnitLabel = "tons",
+  materialColor = DEFAULT_MATERIAL_COLOR,
 }: IndustrialBinHopperProps) {
   const gradientId = useId();
-
-  const LEFT_LABEL_GUTTER = 52;
-  const RIGHT_MARGIN = 20;
-  const bodyW = Math.max(200, width);
-  const svgWidth = LEFT_LABEL_GUTTER + bodyW + RIGHT_MARGIN;
-  const hopperOffsetX = LEFT_LABEL_GUTTER;
+  const metal = `url(#${gradientId}-metal)`;
 
   const known = fillLevel !== null;
-  const currentFill = known ? clamp01(fillLevel) : 0;
-  const badgeColor = known ? getFillBadgeColor(currentFill) : LABEL_FILL;
+  const currentFill = known ? Math.min(100, Math.max(0, fillLevel)) : 0;
   const currentAmount = known ? ((currentFill / 100) * capacity).toFixed(1) : "—";
+  const fillHeight = (currentFill / 100) * TOTAL_H;
 
-  const topWidth = bodyW * 0.85;
-  const midTopWidth = bodyW * 0.78;
-  const midBottomWidth = bodyW * 0.5;
-  const bottomWidth = bodyW * 0.25;
-  const dischargeWidth = bodyW * 0.15;
-
-  const topY = 8;
-  const section1Y = 68;
-  const section2Y = 148;
-  const section3Y = 228;
-  const bottomY = 288;
-  const dischargeY = 318;
-
-  const totalHeight = dischargeY - topY;
-  const badgeTop = dischargeY + 8;
-  const svgCanvasHeight = badgeTop + 30;
-  const fillHeight = (currentFill / 100) * totalHeight;
-
-  const fillPath = useMemo(
-    () =>
-      buildFillPath({
-        hopperOffsetX,
-        width: bodyW,
-        topY,
-        section1Y,
-        section2Y,
-        section3Y,
-        bottomY,
-        dischargeY,
-        topWidth,
-        midTopWidth,
-        midBottomWidth,
-        bottomWidth,
-        dischargeWidth,
-        fillHeight,
-      }),
-    [
-      hopperOffsetX,
-      bodyW,
-      topY,
-      section1Y,
-      section2Y,
-      section3Y,
-      bottomY,
-      dischargeY,
-      topWidth,
-      midTopWidth,
-      midBottomWidth,
-      bottomWidth,
-      dischargeWidth,
-      fillHeight,
-    ],
+  // Drawn in this order so the beams sit on the top section and the rivets on the first middle one.
+  const section = (i: number) => (
+    <path
+      d={trapezoid(PROFILE[i], PROFILE[i + 1])}
+      // The discharge, the last section, is plain; the rest are sheet metal.
+      fill={i === PROFILE.length - 2 ? "#757575" : metal}
+      stroke={STROKE}
+      strokeWidth={2.5}
+    />
   );
-
-  const ox = hopperOffsetX;
 
   return (
     <div className="flex flex-col items-center">
-      <svg
-        width="100%"
-        viewBox={`0 0 ${svgWidth} ${svgCanvasHeight}`}
-        style={{ maxWidth: svgWidth }}
-      >
+      <svg width="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{ maxWidth: SVG_W }}>
         <defs>
           <linearGradient id={`${gradientId}-material`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={MATERIAL_FILL_TOP} stopOpacity={1} />
-            <stop offset="100%" stopColor={MATERIAL_FILL_BOTTOM} stopOpacity={1} />
+            <stop offset="0%" stopColor={shadeHex(materialColor, 0.12)} />
+            <stop offset="100%" stopColor={shadeHex(materialColor, -0.22)} />
           </linearGradient>
           <linearGradient id={`${gradientId}-metal`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#9e9e9e" stopOpacity={0.9} />
-            <stop offset="50%" stopColor="#e0e0e0" stopOpacity={1} />
+            <stop offset="50%" stopColor="#e0e0e0" />
             <stop offset="100%" stopColor="#757575" stopOpacity={0.9} />
           </linearGradient>
         </defs>
 
-        {/* Top section */}
-        <path
-          d={`M ${ox + (bodyW - topWidth) / 2} ${topY} L ${ox + (bodyW + topWidth) / 2} ${topY} L ${ox + (bodyW + midTopWidth) / 2} ${section1Y} L ${ox + (bodyW - midTopWidth) / 2} ${section1Y} Z`}
-          fill={`url(#${gradientId}-metal)`}
-          stroke="#424242"
-          strokeWidth={2.5}
-        />
-
+        {section(0)}
         {[0.3, 0.5, 0.7].map((pos) => (
           <rect
             key={`beam-${pos}`}
-            x={ox + (bodyW - topWidth) / 2 + topWidth * pos - 3}
-            y={topY}
+            x={CENTER_X - TOP.w / 2 + TOP.w * pos - 3}
+            y={TOP_Y}
             width={6}
-            height={section1Y - topY}
+            height={SECTION_1.y - TOP_Y}
             fill="#616161"
-            stroke="#424242"
+            stroke={STROKE}
             strokeWidth={1}
           />
         ))}
 
-        {/* Middle 1 */}
-        <path
-          d={`M ${ox + (bodyW - midTopWidth) / 2} ${section1Y} L ${ox + (bodyW + midTopWidth) / 2} ${section1Y} L ${ox + (bodyW + midTopWidth) / 2} ${section2Y} L ${ox + (bodyW - midTopWidth) / 2} ${section2Y} Z`}
-          fill={`url(#${gradientId}-metal)`}
-          stroke="#424242"
-          strokeWidth={2.5}
-        />
+        {section(1)}
+        {[-1, 1].flatMap((side) =>
+          Array.from({ length: 8 }, (_, i) => (
+            <circle
+              key={`rivet-${side}-${i}`}
+              cx={CENTER_X + side * (SECTION_1.w / 2 - 10)}
+              cy={SECTION_1.y + ((SECTION_2.y - SECTION_1.y) / 8) * i + 10}
+              r={2}
+              fill="#757575"
+              stroke={STROKE}
+              strokeWidth={0.5}
+            />
+          )),
+        )}
 
-        {Array.from({ length: 8 }).map((_, i) => (
-          <circle
-            key={`r1-${i}`}
-            cx={ox + (bodyW - midTopWidth) / 2 + 10}
-            cy={section1Y + ((section2Y - section1Y) / 8) * i + 10}
-            r={2}
-            fill="#757575"
-            stroke="#424242"
-            strokeWidth={0.5}
-          />
-        ))}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <circle
-            key={`r2-${i}`}
-            cx={ox + (bodyW + midTopWidth) / 2 - 10}
-            cy={section1Y + ((section2Y - section1Y) / 8) * i + 10}
-            r={2}
-            fill="#757575"
-            stroke="#424242"
-            strokeWidth={0.5}
-          />
-        ))}
+        {section(2)}
+        {section(3)}
+        {section(4)}
 
-        {/* Middle 2 */}
-        <path
-          d={`M ${ox + (bodyW - midTopWidth) / 2} ${section2Y} L ${ox + (bodyW + midTopWidth) / 2} ${section2Y} L ${ox + (bodyW + midBottomWidth) / 2} ${section3Y} L ${ox + (bodyW - midBottomWidth) / 2} ${section3Y} Z`}
-          fill={`url(#${gradientId}-metal)`}
-          stroke="#424242"
-          strokeWidth={2.5}
-        />
-
-        {/* Bottom funnel */}
-        <path
-          d={`M ${ox + (bodyW - midBottomWidth) / 2} ${section3Y} L ${ox + (bodyW + midBottomWidth) / 2} ${section3Y} L ${ox + (bodyW + bottomWidth) / 2} ${bottomY} L ${ox + (bodyW - bottomWidth) / 2} ${bottomY} Z`}
-          fill={`url(#${gradientId}-metal)`}
-          stroke="#424242"
-          strokeWidth={2.5}
-        />
-
-        {/* Discharge */}
-        <path
-          d={`M ${ox + (bodyW - bottomWidth) / 2} ${bottomY} L ${ox + (bodyW + bottomWidth) / 2} ${bottomY} L ${ox + (bodyW + dischargeWidth) / 2} ${dischargeY} L ${ox + (bodyW - dischargeWidth) / 2} ${dischargeY} Z`}
-          fill="#757575"
-          stroke="#424242"
-          strokeWidth={2.5}
-        />
-
-        {fillPath.length > 0 ? (
-          <path d={fillPath} fill={`url(#${gradientId}-material)`} />
-        ) : null}
+        {fillHeight > 0 && <path d={buildFillPath(fillHeight)} fill={`url(#${gradientId}-material)`} />}
 
         {[25, 50, 75, 100].map((level) => {
-          const y = dischargeY - (level / 100) * totalHeight;
-          const textLeft = 10;
-          const lineStartX = hopperOffsetX - 10;
+          const y = DISCHARGE_Y - (level / 100) * TOTAL_H;
           return (
             <g key={`lvl-${level}`}>
-              <text
-                x={textLeft}
-                y={y + 4}
-                fontSize={11}
-                fontWeight="700"
-                fill={LABEL_FILL}
-                textAnchor="start"
-              >
+              <text x={10} y={y + 4} fontSize={11} fontWeight="700" fill={LABEL_FILL}>
                 {`${level}%`}
               </text>
               <line
-                x1={lineStartX}
+                x1={LEFT_LABEL_GUTTER - 10}
                 y1={y}
-                x2={lineStartX + 20}
+                x2={LEFT_LABEL_GUTTER + 10}
                 y2={y}
                 stroke="#616161"
                 strokeWidth={1.5}
@@ -323,23 +161,8 @@ export function IndustrialBinHopper({
           );
         })}
 
-        <rect
-          x={ox + bodyW / 2 - 35}
-          y={badgeTop}
-          width={70}
-          height={22}
-          fill={badgeColor}
-          rx={3}
-          opacity={0.95}
-        />
-        <text
-          x={ox + bodyW / 2}
-          y={badgeTop + 16}
-          textAnchor="middle"
-          fontSize={14}
-          fontWeight="700"
-          fill="#ffffff"
-        >
+        <rect x={CENTER_X - 35} y={BADGE_TOP} width={70} height={22} fill={LABEL_FILL} rx={3} opacity={0.95} />
+        <text x={CENTER_X} y={BADGE_TOP + 16} textAnchor="middle" fontSize={14} fontWeight="700" fill="#ffffff">
           {known ? `${Math.round(currentFill)}% Full` : "—"}
         </text>
       </svg>

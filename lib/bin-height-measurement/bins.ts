@@ -11,6 +11,8 @@ import { binHeightMeasurementProfile } from "./bluetooth-profile";
 export type Bin = {
   id: string;
   name: string;
+  /** Hex colour (#rrggbb) the bin's material is drawn in; the default colour when unset. */
+  materialColor?: string;
 };
 
 const STORAGE_KEY = "bin-height-measurement:bins";
@@ -35,8 +37,14 @@ function isBin(value: unknown): value is Bin {
     typeof value === "object" &&
     value !== null &&
     typeof (value as Bin).id === "string" &&
-    typeof (value as Bin).name === "string"
+    typeof (value as Bin).name === "string" &&
+    ((value as Bin).materialColor === undefined || isHexColor((value as Bin).materialColor))
   );
+}
+
+/** Whether `value` is a #rrggbb colour, the form `<input type="color">` gives. */
+export function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
 }
 
 function getBins(): Bin[] {
@@ -96,6 +104,12 @@ export function addBin(name: string): Bin {
 /** Renames a bin (see `validateBinName`). Its sensor link is kept. */
 export function renameBin(id: string, name: string): void {
   setBins(getBins().map((bin) => (bin.id === id ? { ...bin, name: name.trim() } : bin)));
+}
+
+/** Sets the colour (#rrggbb) a bin's material is drawn in. */
+export function setBinMaterialColor(id: string, materialColor: string): void {
+  if (!isHexColor(materialColor)) return;
+  setBins(getBins().map((bin) => (bin.id === id ? { ...bin, materialColor } : bin)));
 }
 
 /** Removes a bin and disconnects its sensor. The last bin is kept, so the page always has one to show. */
