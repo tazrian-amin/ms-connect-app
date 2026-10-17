@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import RefreshIcon from "@mui/icons-material/Refresh";
+// import RefreshIcon from "@mui/icons-material/Refresh";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Snackbar from "@mui/material/Snackbar";
-import Stack from "@mui/material/Stack";
-import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
+// import Stack from "@mui/material/Stack";
+// import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
 import { DeviceDetailsLayout } from "@/components/device-details/device-details-layout";
 import { DeviceSection } from "@/components/device-details/device-section";
-import { MessageLog } from "@/components/device-details/message-log";
+// import { MessageLog } from "@/components/device-details/message-log";
 import { TelemetryLineChart, type TelemetryThreshold } from "@/components/device-details/telemetry-chart";
 import {
   dewaterPumpFloatReplacementCommands,
@@ -324,78 +324,78 @@ export function DewaterPumpFloatReplacementDetails() {
             </DeviceSection>
           </>
         }
-        diagnostics={
-          <>
-            {/* Device details and settings the pump monitoring card doesn't cover. The current
-                thresholds are here because the firmware keeps them in ADC counts, which the motor
-                current column, drawn in amps, can't show. */}
-            <DeviceSection
-              title="Device"
-              description={
-                data.embedded_software_ver
-                  ? `Firmware ${data.embedded_software_ver} · Serial ${data.serial_number ?? "—"}`
-                  : "Press Device info."
-              }
-              action={
-                <Stack direction="row" spacing={1}>
-                  <ActionButton
-                    messenger={messenger}
-                    action="get_status"
-                    label="Device info"
-                    requiresEditMode={false}
-                  />
-                  <ActionButton
-                    messenger={messenger}
-                    action="get_pump_states"
-                    label="Refresh"
-                    icon={<RefreshIcon />}
-                    requiresEditMode={false}
-                  />
-                </Stack>
-              }
-            >
-              <Stack spacing={2} sx={{ mt: 2 }}>
-                <SettingForm
-                  messenger={messenger}
-                  setting="set_current_sens_high_thr"
-                  title="Over-current threshold"
-                  description="At or above this reading every pump stops with a fault."
-                  label="Threshold"
-                  unit="ADC"
-                  min={0}
-                  max={4095}
-                  step={1}
-                  reported={data.current_high_thr}
-                />
-                <SettingForm
-                  messenger={messenger}
-                  setting="set_current_sens_low_thr"
-                  title="Under-current threshold"
-                  label="Threshold"
-                  unit="ADC"
-                  min={0}
-                  max={4095}
-                  step={1}
-                  reported={data.current_low_thr}
-                />
-                <SettingForm
-                  messenger={messenger}
-                  setting="ble_data_interval_s"
-                  title="Bluetooth data interval"
-                  description="How often the device sends the water level and pump start counts."
-                  label="Interval"
-                  unit="s"
-                  min={1}
-                  max={3600}
-                  step={1}
-                  // The firmware reports the interval under a different name for each command that reads it.
-                  reported={data.ble_data_interval_s ?? data.sample_period_s ?? data.period_s}
-                />
-              </Stack>
-            </DeviceSection>
-            <MessageLog messenger={messenger} />
-          </>
-        }
+        // diagnostics={
+        //   <>
+        //     {/* Device details and settings the pump monitoring card doesn't cover. The current
+        //         thresholds are here because the firmware keeps them in ADC counts, which the motor
+        //         current column, drawn in amps, can't show. */}
+        //     <DeviceSection
+        //       title="Device"
+        //       description={
+        //         data.embedded_software_ver
+        //           ? `Firmware ${data.embedded_software_ver} · Serial ${data.serial_number ?? "—"}`
+        //           : "Press Device info."
+        //       }
+        //       action={
+        //         <Stack direction="row" spacing={1}>
+        //           <ActionButton
+        //             messenger={messenger}
+        //             action="get_status"
+        //             label="Device info"
+        //             requiresEditMode={false}
+        //           />
+        //           <ActionButton
+        //             messenger={messenger}
+        //             action="get_pump_states"
+        //             label="Refresh"
+        //             icon={<RefreshIcon />}
+        //             requiresEditMode={false}
+        //           />
+        //         </Stack>
+        //       }
+        //     >
+        //       <Stack spacing={2} sx={{ mt: 2 }}>
+        //         <SettingForm
+        //           messenger={messenger}
+        //           setting="set_current_sens_high_thr"
+        //           title="Over-current threshold"
+        //           description="At or above this reading every pump stops with a fault."
+        //           label="Threshold"
+        //           unit="ADC"
+        //           min={0}
+        //           max={4095}
+        //           step={1}
+        //           reported={data.current_high_thr}
+        //         />
+        //         <SettingForm
+        //           messenger={messenger}
+        //           setting="set_current_sens_low_thr"
+        //           title="Under-current threshold"
+        //           label="Threshold"
+        //           unit="ADC"
+        //           min={0}
+        //           max={4095}
+        //           step={1}
+        //           reported={data.current_low_thr}
+        //         />
+        //         <SettingForm
+        //           messenger={messenger}
+        //           setting="ble_data_interval_s"
+        //           title="Bluetooth data interval"
+        //           description="How often the device sends the water level and pump start counts."
+        //           label="Interval"
+        //           unit="s"
+        //           min={1}
+        //           max={3600}
+        //           step={1}
+        //           // The firmware reports the interval under a different name for each command that reads it.
+        //           reported={data.ble_data_interval_s ?? data.sample_period_s ?? data.period_s}
+        //         />
+        //       </Stack>
+        //     </DeviceSection>
+        //     <MessageLog messenger={messenger} />
+        //   </>
+        // }
       />
       <Snackbar
         open={problem !== null}
