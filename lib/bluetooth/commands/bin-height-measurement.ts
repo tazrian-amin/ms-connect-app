@@ -11,7 +11,7 @@ export const binHeightMeasurementCommands = defineCommands({
   actions: ["read_now", "get_config", "reset_config"],
   settings: {
     set_time: "number", // epoch ms
-    set_device_id: "string", // 1–127 characters, stored on the device
+    set_device_id: "string", // 1–127 printable ASCII characters, stored on the device
     set_sample_period_ms: "number", // 1000–3600000 ms, stored on the device
   },
 });

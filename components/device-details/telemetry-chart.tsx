@@ -88,6 +88,23 @@ type TelemetryChartProps = {
   emptyMessage?: string;
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Clock time for the axis ticks (with the date once the readings span more than a day), and the full
+ * date and time in the tooltip. Replaces the time scale's default ticks, which show only the field that
+ * changes, e.g. ":29" for seconds.
+ */
+function formatTime(value: Date, location: string, points: HistoryPoint[]): string {
+  if (location !== "tick") {
+    return value.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" });
+  }
+  const span = points.length > 1 ? points[points.length - 1].time - points[0].time : 0;
+  return span > DAY_MS
+    ? value.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : value.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 /** Line chart of one quantity over time, in its own titled frame. */
 export function TelemetryChart({ title, unit, points = [], min, max, emptyMessage }: TelemetryChartProps) {
   return (
@@ -98,7 +115,13 @@ export function TelemetryChart({ title, unit, points = [], min, max, emptyMessag
       <LineChart
         height={240}
         series={[{ data: points.map((point) => point.value), label: title, showMark: false }]}
-        xAxis={[{ scaleType: "time", data: points.map((point) => new Date(point.time)) }]}
+        xAxis={[
+          {
+            scaleType: "time",
+            data: points.map((point) => new Date(point.time)),
+            valueFormatter: (value: Date, context) => formatTime(value, context.location, points),
+          },
+        ]}
         yAxis={[{ label: unit, min, max }]}
         hideLegend
         localeText={emptyMessage ? { noData: emptyMessage } : undefined}

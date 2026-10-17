@@ -281,7 +281,7 @@ The firmware reports a rejected command as `"status":"error"` and `msg` rather t
 
 ### Bin Height Measurement
 
-Agreed with `firmware/Bin-Height-Measurement-Firmware`, whose field and command names are the source of truth. Uses a JDY-23 serial module (section 1). The device has no clock: `timestamp` is `0` until `set_time` is sent.
+Agreed with `firmware/Bin-Height-Measurement-Firmware`, whose field and command names are the source of truth. Uses an HM-10 serial module (section 1), which the firmware names `MS-BIN-<4 hex>` at boot. The device has no clock: `timestamp` is `0` until `set_time` is sent; the app sends it on every connect. Periodic samples are only sent while a phone is connected.
 
 | Kind | Name | Type / reply |
 | --- | --- | --- |
@@ -293,7 +293,7 @@ Agreed with `firmware/Bin-Height-Measurement-Firmware`, whose field and command 
 | Action | `get_config` | replies `time_synced`, `sample_period_ms` |
 | Action | `reset_config` | clears the stored device ID (falls back to the MCU unique ID); replies `time_synced`, `sample_period_ms` |
 | Setting | `set_time` | number (epoch ms); replies `time_synced` |
-| Setting | `set_device_id` | string, 1–127 characters; replies `time_synced`, `sample_period_ms` with the new `deviceId` |
+| Setting | `set_device_id` | string, 1–127 printable ASCII characters; replies `time_synced`, `sample_period_ms` with the new `deviceId` |
 | Setting | `set_sample_period_ms` | number (ms), 1000–3600000, stored on the device; replies `time_synced`, `sample_period_ms` |
 
 ## 7. Firmware checklist

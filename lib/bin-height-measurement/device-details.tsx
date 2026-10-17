@@ -37,6 +37,9 @@ export function BinHeightMeasurementDetails() {
 
   return (
     <>
+      {bins.map((bin) => (
+        <BinRecorder key={bin.id} bin={bin} />
+      ))}
       <BinTabs
         bins={bins}
         selectedId={selected.id}
@@ -59,6 +62,15 @@ export function BinHeightMeasurementDetails() {
   );
 }
 
+/**
+ * Keeps a bin's readings flowing while another bin's tab is shown. History only records while
+ * something listens, so without this a hidden bin's chart would have a gap for the time it was hidden.
+ */
+function BinRecorder({ bin }: { bin: Bin }) {
+  useFieldHistory(getMessenger(binHeightMeasurementProfile, binHeightMeasurementCommands, bin), "material_height");
+  return null;
+}
+
 /** Connection, settings, readings and telemetry of one bin, over its own sensor's link. */
 function BinDetails({ bin }: { bin: Bin }) {
   const messenger = getMessenger(binHeightMeasurementProfile, binHeightMeasurementCommands, bin);
@@ -67,9 +79,12 @@ function BinDetails({ bin }: { bin: Bin }) {
   const heights = useFieldHistory(messenger, "material_height");
   const connected = status === "connected";
 
-  // Ask for the stored interval as soon as the link is up, so the settings show it.
+  // As soon as the link is up, set the device clock (it has none, so samples carry its timestamps
+  // from then on) and ask for the stored interval, so the settings show it.
   useEffect(() => {
-    if (connected) messenger.sendAction("get_config").catch(() => {});
+    if (!connected) return;
+    messenger.sendSetting("set_time", Date.now()).catch(() => {});
+    messenger.sendAction("get_config").catch(() => {});
   }, [connected, messenger]);
 
   return (
