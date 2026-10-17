@@ -3,10 +3,11 @@
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
-// Palette mirrors the tokens in globals.css. With CSS variables and both color
-// schemes defined, MUI follows prefers-color-scheme, same as the CSS tokens.
+// Palette mirrors the tokens in globals.css. MUI toggles a `light`/`dark` class
+// on <html> (following the system by default, or the user's choice from the
+// theme toggle), and the CSS tokens key off the same class.
 const theme = createTheme({
-  cssVariables: true,
+  cssVariables: { colorSchemeSelector: "class" },
   colorSchemes: {
     light: {
       palette: {

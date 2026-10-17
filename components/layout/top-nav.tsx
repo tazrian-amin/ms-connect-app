@@ -8,6 +8,7 @@ import Button from "@mui/material/Button";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function TopNav() {
   return (
@@ -66,25 +67,35 @@ export function TopNav() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          disableElevation
-          href="https://mining-sentry.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          endIcon={<OpenInNewIcon />}
+        <Box
           sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: 0.5, sm: 1 },
             flexShrink: 0,
-            whiteSpace: "nowrap",
-            minHeight: { xs: 36, sm: 40 },
-            px: { xs: 1.5, sm: 2 },
-            fontSize: { xs: "0.75rem", sm: "0.875rem" },
-            "& .MuiButton-endIcon": { ml: { xs: 0.5, sm: 1 } },
-            "& .MuiButton-endIcon > svg": { fontSize: { xs: 16, sm: 20 } },
           }}
         >
-          Mining Sentry
-        </Button>
+          <Button
+            variant="contained"
+            disableElevation
+            href="https://mining-sentry.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            endIcon={<OpenInNewIcon />}
+            sx={{
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              minHeight: { xs: 36, sm: 40 },
+              px: { xs: 1.5, sm: 2 },
+              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              "& .MuiButton-endIcon": { ml: { xs: 0.5, sm: 1 } },
+              "& .MuiButton-endIcon > svg": { fontSize: { xs: 16, sm: 20 } },
+            }}
+          >
+            Mining Sentry
+          </Button>
+          <ThemeToggle />
+        </Box>
       </Toolbar>
     </AppBar>
   );
