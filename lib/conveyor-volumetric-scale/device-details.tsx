@@ -10,6 +10,7 @@ import { DeviceDetailsLayout } from "@/components/device-details/device-details-
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
 import { conveyorVolumetricScaleCommands } from "@/lib/bluetooth/commands/conveyor-volumetric-scale";
+import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { conveyorVolumetricScaleProfile } from "./bluetooth-profile";
@@ -17,6 +18,8 @@ import { conveyorVolumetricScaleProfile } from "./bluetooth-profile";
 export function ConveyorVolumetricScaleDetails() {
   const messenger = getMessenger(conveyorVolumetricScaleProfile, conveyorVolumetricScaleCommands);
   const { data, updatedAt } = useDeviceState(messenger);
+  const volumeRates = useFieldHistory(messenger, "volume_rate");
+  const beltSpeeds = useFieldHistory(messenger, "belt_speed");
 
   return (
     <DeviceDetailsLayout
@@ -53,8 +56,8 @@ export function ConveyorVolumetricScaleDetails() {
       }
       telemetry={
         <TelemetrySection>
-          <TelemetryChart title="Volume rate" unit="m³/h" />
-          <TelemetryChart title="Belt speed" unit="m/s" />
+          <TelemetryChart title="Volume rate" unit="m³/h" points={volumeRates} />
+          <TelemetryChart title="Belt speed" unit="m/s" points={beltSpeeds} />
         </TelemetrySection>
       }
     />

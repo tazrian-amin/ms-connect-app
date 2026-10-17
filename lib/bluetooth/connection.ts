@@ -1,5 +1,6 @@
 import { toHex } from "./codec";
 import { bleLog } from "./debug";
+import { DemoLink, type DemoSimulator } from "./demo";
 import { describeBluetoothError, isChooserCancelled } from "./errors";
 import type { DeviceProfile } from "./profile";
 
@@ -7,9 +8,11 @@ export type ConnectionStatus = "disconnected" | "requesting" | "connecting" | "c
 
 export type ConnectionState = {
   status: ConnectionStatus;
-  /** Name the hardware advertises, once the user has picked it. */
+  /** Name the hardware advertises, from when the user picks it until the link is disconnected. */
   deviceName: string | null;
   error: string | null;
+  /** True while linked to a simulated device (see ./demo.ts) rather than real hardware. */
+  demo: boolean;
 };
 
 type ValueListener = (value: DataView) => void;
@@ -22,7 +25,12 @@ export type ConnectionOptions = {
   findOtherUser?: (device: BluetoothDevice) => string | null;
 };
 
-export const initialConnectionState: ConnectionState = { status: "disconnected", deviceName: null, error: null };
+export const initialConnectionState: ConnectionState = {
+  status: "disconnected",
+  deviceName: null,
+  error: null,
+  demo: false,
+};
 
 const CONNECT_TIMEOUT_MS = 15_000;
 // Delays between automatic reconnect attempts after the link drops unexpectedly.
@@ -35,6 +43,7 @@ const RECONNECT_DELAYS_MS = [1_000, 2_000, 4_000, 8_000, 16_000];
  * - GATT operations are queued: Chrome rejects a read/write that starts while another is in flight.
  * - If the link drops on its own, it reconnects with backoff and restores notification subscriptions.
  * - State is exposed through `getState`/`subscribeState` for `useSyncExternalStore`.
+ * - `connectDemo()` links to a simulator instead, for trying the app without the hardware.
  */
 export class BluetoothConnection<K extends string = string> {
   readonly profile: DeviceProfile<K>;
@@ -54,6 +63,7 @@ export class BluetoothConnection<K extends string = string> {
   #userDisconnected = false;
   #reconnectAttempt = 0;
   #reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  #demo: DemoLink | null = null;
 
   constructor(profile: DeviceProfile<K>, options: ConnectionOptions = {}) {
     this.profile = profile;
@@ -112,8 +122,21 @@ export class BluetoothConnection<K extends string = string> {
     }
   }
 
+  /** Links to a simulated device instead of real hardware. Ended by `disconnect()` like a real link. */
+  connectDemo(simulator: DemoSimulator): void {
+    if (this.#state.status !== "disconnected") return;
+    bleLog("connection", `starting demo "${simulator.name}"`);
+    this.#demo = new DemoLink(simulator, (value) => {
+      // The simulator only speaks over the messaging characteristic.
+      this.#valueListeners.get("fromDevice" as K)?.forEach((listener) => listener(value));
+    });
+    this.#setState({ status: "connected", deviceName: simulator.name, error: null, demo: true });
+  }
+
   /** Closes the link and stops any automatic reconnect. */
   disconnect(): void {
+    this.#demo?.stop();
+    this.#demo = null;
     this.#userDisconnected = true;
     clearTimeout(this.#reconnectTimer);
     this.#device?.gatt?.disconnect();
@@ -123,6 +146,8 @@ export class BluetoothConnection<K extends string = string> {
 
   /** Reads the current value of a characteristic. */
   read(key: K): Promise<DataView> {
+    const demo = this.#demo;
+    if (demo) return this.#enqueue(async () => demo.read(key));
     return this.#enqueue(async () => (await this.#characteristic(key)).readValue());
   }
 
@@ -131,6 +156,8 @@ export class BluetoothConnection<K extends string = string> {
    * supports it, so the promise resolves only once the device has acknowledged the write.
    */
   write(key: K, value: BufferSource): Promise<void> {
+    const demo = this.#demo;
+    if (demo) return this.#enqueue(async () => demo.write(value));
     return this.#enqueue(async () => {
       const characteristic = await this.#characteristic(key);
       if (characteristic.properties.write) {
@@ -250,6 +277,8 @@ export class BluetoothConnection<K extends string = string> {
   }
 
   async #startNotifications(key: K): Promise<void> {
+    // A demo link delivers to every subscriber already.
+    if (this.#demo) return;
     const characteristic = await this.#characteristic(key);
     await characteristic.startNotifications();
     bleLog("connection", `notifications on for "${key}"`);
@@ -276,6 +305,8 @@ export class BluetoothConnection<K extends string = string> {
       bleLog("connection", `${this.#state.status} → ${patch.status}`);
     }
     if (patch.error) bleLog("connection", `error shown: ${patch.error}`);
+    // A name only describes a live (or in-progress) link; don't keep showing the last device once it's gone.
+    if (patch.status === "disconnected") patch = { ...patch, deviceName: null, demo: false };
     this.#state = { ...this.#state, ...patch };
     this.#stateListeners.forEach((listener) => listener());
   }

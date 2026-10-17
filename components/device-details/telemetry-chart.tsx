@@ -21,6 +21,8 @@ type TelemetryLineChartProps = {
   unit?: string;
   /** Line colour of the plotted series. */
   color?: string;
+  /** Readings to plot, oldest first, e.g. from `useFieldHistory`. Empty until there are any. */
+  points?: HistoryPoint[];
   /** Fixes the top of the y axis, e.g. the sensor's full range. */
   max?: number;
   /** Drawn as dashed lines across the chart. */
@@ -31,15 +33,15 @@ type TelemetryLineChartProps = {
   emptyMessage?: string;
 };
 
-// TODO: Placeholder. Plot the device's recorded readings once telemetry history is stored.
 /**
  * Line chart of one quantity over time, without a frame, for a device that lays out its own
- * telemetry cards: a legend, unit-labelled ticks and optional threshold lines. Currently always empty.
+ * telemetry cards: a legend, unit-labelled ticks and optional threshold lines.
  */
 export function TelemetryLineChart({
   label,
   unit,
   color,
+  points = [],
   max,
   thresholds = [],
   thresholdLabels = "line",
@@ -54,8 +56,14 @@ export function TelemetryLineChart({
   return (
     <LineChart
       height={240}
-      series={[{ data: [], label, color, showMark: false }, ...legendThresholds]}
-      xAxis={[{ scaleType: "time", data: [] }]}
+      series={[{ data: points.map((point) => point.value), label, color, showMark: false }, ...legendThresholds]}
+      xAxis={[
+        {
+          scaleType: "time",
+          data: points.map((point) => new Date(point.time)),
+          valueFormatter: (value: Date | null, context) => formatTime(value, context.location, points),
+        },
+      ]}
       yAxis={[
         { min: 0, max, width: 56, valueFormatter: (value: number) => (unit ? `${value} ${unit}` : String(value)) },
       ]}
@@ -95,7 +103,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * date and time in the tooltip. Replaces the time scale's default ticks, which show only the field that
  * changes, e.g. ":29" for seconds.
  */
-function formatTime(value: Date, location: string, points: HistoryPoint[]): string {
+function formatTime(value: Date | null, location: string, points: HistoryPoint[]): string {
+  // The chart asks with no value for an axis position that no longer has data, e.g. the instant
+  // the readings are cleared when a demo ends.
+  if (!value) return "";
   if (location !== "tick") {
     return value.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" });
   }
@@ -119,7 +130,7 @@ export function TelemetryChart({ title, unit, points = [], min, max, emptyMessag
           {
             scaleType: "time",
             data: points.map((point) => new Date(point.time)),
-            valueFormatter: (value: Date, context) => formatTime(value, context.location, points),
+            valueFormatter: (value: Date | null, context) => formatTime(value, context.location, points),
           },
         ]}
         yAxis={[{ label: unit, min, max }]}

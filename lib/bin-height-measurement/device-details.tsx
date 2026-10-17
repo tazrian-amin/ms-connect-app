@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import AddIcon from "@mui/icons-material/Add";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
 import { ControlSection } from "@/components/device-details/control-section";
@@ -15,11 +19,21 @@ import { binHeightMeasurementCommands } from "@/lib/bluetooth/commands/bin-heigh
 import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useConnectionState, useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
-import { IndustrialBinHopper } from "./bin-dashboard/industrial-bin-hopper";
+import { BinVisual } from "./bin-dashboard/bin-visual";
 import { DEFAULT_MATERIAL_COLOR } from "./bin-dashboard/material-colors";
 import { MaterialColorSelect } from "./bin-dashboard/material-color-select";
+import { AddBinDialog } from "./bin-dialogs";
 import { BinTabs } from "./bin-tabs";
-import { addBin, moveBin, removeBin, renameBin, setBinMaterialColor, useBins, type Bin } from "./bins";
+import {
+  addBin,
+  moveBin,
+  removeBin,
+  renameBin,
+  setBinMaterialColor,
+  useBins,
+  type Bin,
+  type NewBin,
+} from "./bins";
 import { binHeightMeasurementProfile } from "./bluetooth-profile";
 
 /** Full scale of the sensor's 12-bit ADC reading. */
@@ -29,7 +43,11 @@ export function BinHeightMeasurementDetails() {
   const bins = useBins();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Falls back to the first bin before one is picked, or after the picked one is removed.
-  const selected = bins.find((bin) => bin.id === selectedId) ?? bins[0];
+  const selected = bins?.find((bin) => bin.id === selectedId) ?? bins?.[0];
+
+  // Nothing until the saved bins are read, then a prompt to add the first one if there are none.
+  if (!bins) return null;
+  if (!selected) return <NoBins onAdd={(bin) => setSelectedId(addBin(bin).id)} />;
 
   const handleRemove = (id: string) => {
     const index = bins.findIndex((bin) => bin.id === id);
@@ -47,7 +65,7 @@ export function BinHeightMeasurementDetails() {
         bins={bins}
         selectedId={selected.id}
         onSelect={setSelectedId}
-        onAdd={(name) => setSelectedId(addBin(name).id)}
+        onAdd={(bin) => setSelectedId(addBin(bin).id)}
         onRename={renameBin}
         onRemove={handleRemove}
         onMove={moveBin}
@@ -62,6 +80,47 @@ export function BinHeightMeasurementDetails() {
         <BinDetails key={selected.id} bin={selected} />
       </Box>
     </>
+  );
+}
+
+/** Shown before any bin is added: a button in the middle of the page to add the first one. */
+function NoBins({ onAdd }: { onAdd: (bin: NewBin) => void }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        borderRadius: 2,
+        borderStyle: "dashed",
+        py: { xs: 6, sm: 10 },
+        px: 2,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        textAlign: "center",
+        gap: 2,
+      }}
+    >
+      <Stack spacing={0.5}>
+        <Typography variant="h6" component="h2">
+          No bins yet
+        </Typography>
+        <Typography sx={{ color: "text.secondary" }}>
+          Add a bin to connect its sensor and watch its material height.
+        </Typography>
+      </Stack>
+      <Button variant="contained" size="large" disableElevation startIcon={<AddIcon />} onClick={() => setAdding(true)}>
+        Add a new bin
+      </Button>
+      <AddBinDialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        onAdd={(bin) => {
+          setAdding(false);
+          onAdd(bin);
+        }}
+      />
+    </Paper>
   );
 }
 
@@ -133,7 +192,9 @@ function BinDetails({ bin }: { bin: Bin }) {
           <DashboardWidget label="Fill level" sx={{ gridColumn: "1 / -1" }}>
             {/* Fill is the reading as a share of ADC full scale until the sensor is calibrated to the bin.
                 Drawn empty, with no value, until the sensor has reported. */}
-            <IndustrialBinHopper
+            <BinVisual
+              category={bin.category}
+              materialType={bin.materialType}
               fillLevel={
                 data.material_height !== null && data.material_height !== undefined
                   ? (data.material_height / ADC_MAX) * 100
