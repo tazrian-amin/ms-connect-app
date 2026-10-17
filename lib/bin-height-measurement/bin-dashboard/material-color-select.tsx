@@ -18,6 +18,8 @@ type MaterialColorSelectProps = {
   /** The current colour, #rrggbb. */
   value: string;
   onChange: (color: string) => void;
+  /** Fills its container like a form field, e.g. in a dialog, instead of sitting compact in a toolbar. */
+  fullWidth?: boolean;
 };
 
 function Swatch({ color }: { color: string }) {
@@ -42,7 +44,7 @@ function Swatch({ color }: { color: string }) {
  * Picks the colour a bin's material is drawn in: one of the common mining materials, or any
  * colour from the browser's colour picker via the last item.
  */
-export function MaterialColorSelect({ value, onChange }: MaterialColorSelectProps) {
+export function MaterialColorSelect({ value, onChange, fullWidth = false }: MaterialColorSelectProps) {
   const labelId = useId();
   const pickerRef = useRef<HTMLInputElement>(null);
   const preset = MATERIAL_PRESETS.find((p) => p.color.toLowerCase() === value.toLowerCase());
@@ -54,7 +56,12 @@ export function MaterialColorSelect({ value, onChange }: MaterialColorSelectProp
 
   return (
     <Box sx={{ position: "relative" }}>
-      <FormControl size="small" sx={{ minWidth: 180 }}>
+      <FormControl
+        size={fullWidth ? "medium" : "small"}
+        fullWidth={fullWidth}
+        margin={fullWidth ? "dense" : "none"}
+        sx={{ minWidth: 180 }}
+      >
         <InputLabel id={labelId}>Material colour</InputLabel>
         <Select
           labelId={labelId}

@@ -28,7 +28,6 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tab, { type TabProps } from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -39,15 +38,16 @@ import type { ConnectionStatus } from "@/lib/bluetooth/connection";
 import { useConnectionState } from "@/lib/bluetooth/hooks";
 import { getConnection } from "@/lib/bluetooth/registry";
 import { useAnyEditMode, warnEditMode } from "@/lib/edit-mode";
-import { BIN_NAME_MAX_LENGTH, suggestBinName, validateBinName, type Bin } from "./bins";
+import { AddBinDialog, RenameBinDialog } from "./bin-dialogs";
+import type { Bin, NewBin } from "./bins";
 import { binHeightMeasurementProfile } from "./bluetooth-profile";
 
 type BinTabsProps = {
   bins: Bin[];
   selectedId: string;
   onSelect: (id: string) => void;
-  /** Called with the name the user entered, already validated. */
-  onAdd: (name: string) => void;
+  /** Called with what the user picked for the new bin, the name already validated. */
+  onAdd: (bin: NewBin) => void;
   /** Called with the bin's new name, already validated. */
   onRename: (id: string, name: string) => void;
   /** Called once the user has confirmed the removal. */
@@ -194,7 +194,6 @@ export function BinTabs({ bins, selectedId, onSelect, onAdd, onRename, onRemove,
             <ListItemText>Move right</ListItemText>
           </MenuItem>
           <MenuItem
-            disabled={bins.length <= 1}
             onClick={() => {
               setMenuAnchor(null);
               unlessEditing(() => setConfirming(true))();
@@ -208,26 +207,20 @@ export function BinTabs({ bins, selectedId, onSelect, onAdd, onRename, onRemove,
         </Menu>
       </Stack>
 
-      <BinNameDialog
+      <AddBinDialog
         open={adding}
-        title="Add bin"
-        submitLabel="Add"
-        getInitialName={suggestBinName}
         onClose={() => setAdding(false)}
-        onSubmit={(name) => {
+        onAdd={(bin) => {
           setAdding(false);
-          onAdd(name);
+          onAdd(bin);
         }}
       />
 
-      <BinNameDialog
+      <RenameBinDialog
         open={renaming}
-        title="Rename bin"
-        submitLabel="Rename"
-        getInitialName={() => selected?.name ?? ""}
-        renamingId={selectedId}
+        bin={selected}
         onClose={() => setRenaming(false)}
-        onSubmit={(name) => {
+        onRename={(name) => {
           setRenaming(false);
           onRename(selectedId, name);
         }}
@@ -279,86 +272,6 @@ function SortableTab({ value, style, ...props }: TabProps & { value: string }) {
         touchAction: "manipulation",
       }}
     />
-  );
-}
-
-type BinNameDialogProps = {
-  open: boolean;
-  title: string;
-  submitLabel: string;
-  /** Fills the field each time the dialog opens, e.g. a suggestion or the current name. */
-  getInitialName: () => string;
-  /** The bin being renamed, which may keep its own name; left out when adding. */
-  renamingId?: string;
-  onClose: () => void;
-  onSubmit: (name: string) => void;
-};
-
-/** Asks for a bin's name, for a new bin or one being renamed. */
-function BinNameDialog({
-  open,
-  title,
-  submitLabel,
-  getInitialName,
-  renamingId,
-  onClose,
-  onSubmit,
-}: BinNameDialogProps) {
-  const [name, setName] = useState("");
-  const [touched, setTouched] = useState(false);
-  const problem = validateBinName(name, renamingId);
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="xs"
-      slotProps={{
-        transition: {
-          // Start afresh each time it opens.
-          onEnter: () => {
-            setName(getInitialName());
-            setTouched(false);
-          },
-        },
-      }}
-    >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          setTouched(true);
-          if (!problem) onSubmit(name);
-        }}
-      >
-        <DialogTitle>{title}</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            margin="dense"
-            label="Bin name"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setTouched(true);
-            }}
-            onFocus={(event) => event.target.select()}
-            error={touched && problem !== null}
-            helperText={(touched && problem) || "Shown on the bin's tab."}
-            slotProps={{ htmlInput: { maxLength: BIN_NAME_MAX_LENGTH } }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button color="inherit" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={touched && problem !== null}>
-            {submitLabel}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
   );
 }
 
