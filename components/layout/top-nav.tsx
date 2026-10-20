@@ -16,10 +16,10 @@ export function TopNav() {
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: "background.paper",
-        color: "text.primary",
+        bgcolor: "var(--brand-chrome-bg)",
+        color: "var(--brand-chrome-fg)",
         borderBottom: 1,
-        borderColor: "divider",
+        borderColor: "var(--brand-chrome-border)",
       }}
     >
       <Toolbar

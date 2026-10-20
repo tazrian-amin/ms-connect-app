@@ -6,10 +6,14 @@
 :root {
   --background: #fafafa;
   --foreground: #18181b;
-  --primary: #ffc500;
+  --primary: #ffc502;
   --primary-foreground: #000000;
-  --secondary: #000000;
+  --secondary: #191919;
   --secondary-foreground: #ffffff;
+  /* Fixed brand chrome (top nav, footer); unlike --secondary, not inverted in dark mode. */
+  --brand-chrome-bg: #191919;
+  --brand-chrome-fg: #ffffff;
+  --brand-chrome-border: rgba(255, 255, 255, 0.12);
   --panel-bg: #ffffff;
   --panel-bg-alt: #f1f3f5;
   --panel-border: #d1d5db;

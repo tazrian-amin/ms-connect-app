@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
-import Chip from "@mui/material/Chip";
+import Checkbox from "@mui/material/Checkbox";
 import Link from "@mui/material/Link";
+import ListItemText from "@mui/material/ListItemText";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -45,9 +47,6 @@ export function ContactSection() {
   const filledIn = message.trim() !== "" || chosenDevices.length > 0;
   // The picker leaves the calling code (e.g. "+1") in the value, so only a typed number counts as entered.
   const phoneInvalid = phoneEntered && !matchIsValidTel(phone);
-
-  const toggleDevice = (slug: string) =>
-    setInterested((current) => (current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]));
 
   const send = () => {
     const about = chosenDevices.length === 1 ? `: ${chosenDevices[0].name}` : "";
@@ -95,36 +94,44 @@ export function ContactSection() {
         </Stack>
 
         <Stack spacing={2.5}>
-          <ChipGroup label="What can we help with?">
-            {topics.map(({ id, label }) => (
-              <Chip
-                key={id}
-                label={label}
-                clickable
-                color={topic === id ? "primary" : "default"}
-                variant={topic === id ? "filled" : "outlined"}
-                aria-pressed={topic === id}
-                onClick={() => setTopic(id)}
-              />
-            ))}
-          </ChipGroup>
-
-          <ChipGroup label="Devices you're interested in (optional)">
-            {devices.map(({ slug, name: deviceName }) => {
-              const selected = interested.includes(slug);
-              return (
-                <Chip
-                  key={slug}
-                  label={deviceName}
-                  clickable
-                  color={selected ? "primary" : "default"}
-                  variant={selected ? "filled" : "outlined"}
-                  aria-pressed={selected}
-                  onClick={() => toggleDevice(slug)}
-                />
-              );
-            })}
-          </ChipGroup>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+              select
+              label="What can we help with?"
+              value={topic}
+              onChange={(event) => setTopic(event.target.value as TopicId)}
+              fullWidth
+            >
+              {topics.map(({ id, label }) => (
+                <MenuItem key={id} value={id}>
+                  {label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Devices (optional)"
+              value={interested}
+              onChange={(event) => {
+                const { value } = event.target as { value: string | string[] };
+                setInterested(typeof value === "string" ? value.split(",") : value);
+              }}
+              slotProps={{
+                select: {
+                  multiple: true,
+                  renderValue: () => chosenDevices.map((device) => device.name).join(", "),
+                },
+              }}
+              fullWidth
+            >
+              {devices.map(({ slug, name: deviceName }) => (
+                <MenuItem key={slug} value={slug}>
+                  <Checkbox checked={interested.includes(slug)} size="small" sx={{ py: 0, pl: 0 }} />
+                  <ListItemText primary={deviceName} />
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
@@ -187,14 +194,3 @@ export function ContactSection() {
   );
 }
 
-/** A labelled, wrapping row of chips. */
-function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Box role="group" aria-label={label}>
-      <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-        {label}
-      </Typography>
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>{children}</Box>
-    </Box>
-  );
-}

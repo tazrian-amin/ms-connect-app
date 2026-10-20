@@ -29,6 +29,7 @@ export function ThemeToggle() {
       <IconButton
         aria-label={`Theme: ${current.label}. Switch to ${next.label}`}
         onClick={() => setMode(next.mode)}
+        color="inherit"
         sx={{ flexShrink: 0 }}
       >
         <current.Icon />

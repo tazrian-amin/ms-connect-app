@@ -13,12 +13,13 @@ export function Footer() {
         py: 2,
         px: 2,
         textAlign: "center",
-        bgcolor: "background.paper",
+        bgcolor: "var(--brand-chrome-bg)",
+        color: "var(--brand-chrome-fg)",
         borderTop: 1,
-        borderColor: "divider",
+        borderColor: "var(--brand-chrome-border)",
       }}
     >
-      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+      <Typography variant="body2">
         Version {appVersion} (build {buildId})
       </Typography>
     </Box>
