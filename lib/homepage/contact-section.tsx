@@ -72,7 +72,9 @@ export function ContactSection() {
         sx={{
           display: "grid",
           gap: { xs: 3, md: 6 },
-          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 2fr) minmax(0, 3fr)" },
+          // minmax(0, …) lets columns shrink below their content, so a long device selection truncates
+          // instead of widening the card past the screen.
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 3fr)" },
         }}
       >
         <Stack spacing={1.5}>
@@ -93,7 +95,7 @@ export function ContactSection() {
           </Typography>
         </Stack>
 
-        <Stack spacing={2.5}>
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
               select

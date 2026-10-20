@@ -19,6 +19,8 @@ const STATIC_URLS = [
   "/icons/icon.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/icon-maskable-192.png",
+  "/icons/icon-maskable-512.png",
 ];
 
 // Same-origin build assets referenced from HTML (attributes and inline RSC payload) or CSS.

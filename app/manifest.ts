@@ -25,8 +25,16 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "any",
       },
+      // Android crops maskable icons to the launcher's shape, keeping only a centred circle 80% wide,
+      // so these keep the logo well inside that with a full-bleed white background.
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/icons/icon-maskable-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
