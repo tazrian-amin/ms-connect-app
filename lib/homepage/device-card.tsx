@@ -80,7 +80,7 @@ export function DeviceCard({ device }: { device: Device }) {
             "& svg": { fontSize: 16, color: "primary.main", transition: "transform 150ms" },
           }}
         >
-          Open device
+          Open Device
           <ArrowForwardIcon />
         </Box>
       </CardActionArea>

@@ -18,10 +18,12 @@ import {
   type PumpNumber,
 } from "@/lib/bluetooth/commands/dewater-pump-float-replacement";
 import type { DeviceMessage } from "@/lib/bluetooth/commands/schema";
+import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useConnectionState, useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger, type DeviceMessenger } from "@/lib/bluetooth/messaging";
 import { useEditMode } from "@/lib/edit-mode";
 import { dewaterPumpFloatReplacementProfile } from "./bluetooth-profile";
+import { demoAmpsToCounts, demoCountsToAmps } from "./demo";
 import {
   formatReading,
   MOTOR_CURRENT_BAND_PLACEHOLDER,
@@ -152,6 +154,58 @@ function toDashboardState(data: DewaterPumpFloatReplacementData): PumpDashboardS
 }
 
 /**
+ * The operation and alteration modes a demo starts in. The firmware keeps both in one
+ * `pump_logic_mode` and has no flush or run-time alteration, so a demo keeps the dashboard's two
+ * choices itself and sends the device the nearest logic mode (see `toPumpLogicMode`).
+ */
+type DemoModes = { operation: OperationMode; alteration: AlterationMode };
+
+const DEMO_START_MODES: DemoModes = { operation: "normal", alteration: "off" };
+
+/** The firmware logic mode nearest to a pair of dashboard modes: alteration wins, as the device can't hold both. */
+function toPumpLogicMode({ operation, alteration }: DemoModes): DewaterPumpFloatReplacementData["pump_logic_mode"] & {} {
+  if (alteration !== "off") return "alteration";
+  return operation === "winter" ? "winter" : "normal";
+}
+
+/**
+ * The dashboard for a demo, which shows everything the firmware will report: run state, runtime,
+ * motor current in amps, and which pump answers each column while alteration is on.
+ */
+function toDemoDashboardState(
+  data: DewaterPumpFloatReplacementData,
+  updatedAt: number | null,
+  modes: DemoModes,
+): PumpDashboardState {
+  const state = toDashboardState(data);
+  const amps = (counts: number | undefined) => (counts === undefined ? null : demoCountsToAmps(counts));
+  const currentHigh = amps(data.current_high_thr);
+  const currentLow = amps(data.current_low_thr);
+  return {
+    ...state,
+    motorCurrent: amps(data.motor_current),
+    currentBand: currentHigh === null || currentLow === null ? null : { high: currentHigh, low: currentLow },
+    pumps: state.pumps.map((pump) => {
+      const id = pump.id as PumpNumber;
+      const runState = data[`pump_${id}_state`];
+      return {
+        ...pump,
+        isOn: runState === undefined ? null : runState === "on",
+        totalRuntimeSeconds: data[`pump_${id}_total_runtime`] ?? null,
+        currentRuntimeSeconds: data[`pump_${id}_current_runtime`] ?? null,
+        runtimeReportedAtMs: updatedAt ?? undefined,
+      };
+    }),
+    columns: state.columns.map((column) => ({
+      ...column,
+      pumpId: data[`column_${column.number as PumpNumber}_pump`] ?? column.pumpId,
+    })),
+    operationMode: modes.operation,
+    alterationMode: modes.alteration,
+  };
+}
+
+/**
  * A band's two ends as dashed chart lines: Max in the alarm red, Min in amber. A band the device
  * hasn't reported is drawn where its sliders rest, and named "—" as they are.
  */
@@ -170,13 +224,34 @@ function bandThresholds(
 
 export function DewaterPumpFloatReplacementDetails() {
   const messenger = getMessenger(dewaterPumpFloatReplacementProfile, dewaterPumpFloatReplacementCommands);
-  const { data } = useDeviceState(messenger);
-  const { status } = useConnectionState(messenger.connection);
+  const { data, updatedAt } = useDeviceState(messenger);
+  const { status, demo } = useConnectionState(messenger.connection);
   const editing = useEditMode(messenger.connection);
   const { lastReset, markReset } = useLastReset(data.serial_number ?? null);
   const [problem, setProblem] = useState<string | null>(null);
   const connected = status === "connected";
-  const state = useMemo(() => toDashboardState(data), [data]);
+  const [demoModes, setDemoModes] = useState(DEMO_START_MODES);
+  // Every demo starts from the same modes, as its device does.
+  const [demoShown, setDemoShown] = useState(demo);
+  if (demo !== demoShown) {
+    setDemoShown(demo);
+    setDemoModes(DEMO_START_MODES);
+  }
+  const state = useMemo(
+    () => (demo ? toDemoDashboardState(data, updatedAt, demoModes) : toDashboardState(data)),
+    [data, demo, demoModes, updatedAt],
+  );
+  const waterLevels = useFieldHistory(messenger, "current_water_level");
+  const motorCurrents = useFieldHistory(messenger, "motor_current");
+  // The charts are drawn in feet and amps, like the dashboard. Only a demo has a scale to amps.
+  const waterLevelsInFeet = useMemo(
+    () => waterLevels.map((point) => ({ time: point.time, value: toFeet(point.value) })),
+    [waterLevels],
+  );
+  const motorCurrentsInAmps = useMemo(
+    () => (demo ? motorCurrents.map((point) => ({ time: point.time, value: demoCountsToAmps(point.value) })) : []),
+    [demo, motorCurrents],
+  );
 
   // Fill the dashboard as soon as the link is up rather than waiting for Refresh. The serial
   // number from get_config is what the last-reset dates are filed under.
@@ -203,19 +278,30 @@ export function DewaterPumpFloatReplacementDetails() {
     );
   }
 
-  // Firmware gaps, plus the pairs its single logic mode can't hold at once.
-  const unavailableOperationModes: UnavailableOptions<OperationMode> = {
-    flush: NOT_IN_FIRMWARE,
-    ...(state.alterationMode === "starts" && {
-      winter: "The firmware can't run winter mode with alteration yet. Turn alteration off first.",
-    }),
-  };
-  const unavailableAlterationModes: UnavailableOptions<AlterationMode> = {
-    runtime: NOT_IN_FIRMWARE,
-    ...(state.operationMode === "winter" && {
-      starts: "The firmware can't run alteration in winter mode yet. Switch to Normal first.",
-    }),
-  };
+  /** In a demo, keeps the dashboard's modes once the device has taken the nearest logic mode. */
+  async function setDemoModesOnDevice(next: DemoModes) {
+    const applied = await setPumpLogicMode(toPumpLogicMode(next));
+    if (applied) setDemoModes(next);
+    return applied;
+  }
+
+  // Firmware gaps, plus the pairs its single logic mode can't hold at once. A demo offers everything.
+  const unavailableOperationModes: UnavailableOptions<OperationMode> = demo
+    ? {}
+    : {
+        flush: NOT_IN_FIRMWARE,
+        ...(state.alterationMode === "starts" && {
+          winter: "The firmware can't run winter mode with alteration yet. Turn alteration off first.",
+        }),
+      };
+  const unavailableAlterationModes: UnavailableOptions<AlterationMode> = demo
+    ? {}
+    : {
+        runtime: NOT_IN_FIRMWARE,
+        ...(state.operationMode === "winter" && {
+          starts: "The firmware can't run alteration in winter mode yet. Switch to Normal first.",
+        }),
+      };
 
   return (
     <>
@@ -232,7 +318,7 @@ export function DewaterPumpFloatReplacementDetails() {
                 locked={!(editing && connected)}
                 unavailableOperationModes={unavailableOperationModes}
                 unavailableAlterationModes={unavailableAlterationModes}
-                unresettableCounters={UNRESETTABLE_COUNTERS}
+                unresettableCounters={demo ? undefined : UNRESETTABLE_COUNTERS}
                 lastReset={lastReset}
                 onPumpEnabledChange={(pumpId, enabled) => {
                   const pump = pumpId as PumpNumber;
@@ -260,16 +346,33 @@ export function DewaterPumpFloatReplacementDetails() {
                     (reply) => reply[`water_${band}_thr`] !== undefined,
                   );
                 }}
-                // No onCurrentBandChange: the firmware takes current thresholds in ADC counts (set
-                // in the Device card below), not the amps this column is drawn in.
+                // Only a demo can change the current band: the firmware takes current thresholds in
+                // ADC counts (set in the Device card below), with no scale to the amps this column
+                // is drawn in.
+                onCurrentBandChange={
+                  demo
+                    ? (band, amps) => {
+                        const setting = band === "high" ? "set_current_sens_high_thr" : "set_current_sens_low_thr";
+                        return confirm(
+                          setting,
+                          () => messenger.sendSetting(setting, demoAmpsToCounts(amps)),
+                          (reply) => reply[`current_${band}_thr`] !== undefined,
+                        );
+                      }
+                    : undefined
+                }
                 // Normal and winter map straight onto the firmware's logic mode; flush has no
-                // command yet, and is never offered.
-                onOperationModeChange={(mode) => (mode === "flush" ? false : setPumpLogicMode(mode))}
+                // command yet, and is only offered in a demo.
+                onOperationModeChange={(mode) => {
+                  if (demo) return setDemoModesOnDevice({ ...demoModes, operation: mode });
+                  return mode === "flush" ? false : setPumpLogicMode(mode);
+                }}
                 // Only reachable from normal operation (see unavailableAlterationModes), so turning
                 // alteration off is a return to normal. Run-time alteration has no command yet.
-                onAlterationModeChange={(mode) =>
-                  mode === "runtime" ? false : setPumpLogicMode(mode === "starts" ? "alteration" : "normal")
-                }
+                onAlterationModeChange={(mode) => {
+                  if (demo) return setDemoModesOnDevice({ ...demoModes, alteration: mode });
+                  return mode === "runtime" ? false : setPumpLogicMode(mode === "starts" ? "alteration" : "normal");
+                }}
                 onMinOffTimeChange={(minutes) =>
                   confirm(
                     "set_pump_cooldown_min",
@@ -278,13 +381,20 @@ export function DewaterPumpFloatReplacementDetails() {
                   )
                 }
                 onResetCounter={async (counter) => {
-                  if (counter !== "starts") return false;
-                  const reset = await confirm(
-                    "reset_pump_count",
-                    () => messenger.sendSetting("reset_pump_count", true),
-                    (reply) => pumpNumbers.every((pump) => reply[`pump_${pump}_current_starts`] === 0),
-                  );
-                  if (reset) markReset("starts");
+                  // The device doesn't track runtime yet, except in a demo.
+                  if (counter === "runtime" && !demo) return false;
+                  const reset = await (counter === "starts"
+                    ? confirm(
+                        "reset_pump_count",
+                        () => messenger.sendSetting("reset_pump_count", true),
+                        (reply) => pumpNumbers.every((pump) => reply[`pump_${pump}_current_starts`] === 0),
+                      )
+                    : confirm(
+                        "reset_pump_runtime",
+                        () => messenger.sendSetting("reset_pump_runtime", true),
+                        (reply) => pumpNumbers.every((pump) => reply[`pump_${pump}_current_runtime`] === 0),
+                      ));
+                  if (reset) markReset(counter);
                   return reset;
                 }}
               />
@@ -298,6 +408,7 @@ export function DewaterPumpFloatReplacementDetails() {
                 label={`Water Level (${WATER_LEVEL_SCALE.unit})`}
                 unit={WATER_LEVEL_SCALE.unit}
                 color={PumpMonitoringPalette.waterActive}
+                points={waterLevelsInFeet}
                 max={WATER_LEVEL_SCALE.max}
                 thresholds={bandThresholds(
                   state.waterBand,
@@ -313,6 +424,7 @@ export function DewaterPumpFloatReplacementDetails() {
                 label="Motor Current (Arms)"
                 unit={MOTOR_CURRENT_SCALE.unit}
                 color={PumpMonitoringPalette.currentActive}
+                points={motorCurrentsInAmps}
                 max={MOTOR_CURRENT_SCALE.max}
                 thresholds={bandThresholds(
                   state.currentBand,

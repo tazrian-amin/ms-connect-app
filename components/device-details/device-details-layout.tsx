@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import Stack from "@mui/material/Stack";
 import type { BluetoothConnection } from "@/lib/bluetooth/connection";
 import { ConnectionSection } from "./connection-section";
-import { EditModeGuard } from "./edit-mode-guard";
+import { DemoFeedbackDialog } from "./demo-feedback-dialog";
+import { NavigationGuard } from "./navigation-guard";
 
 type DeviceDetailsLayoutProps = {
   slug: string;
@@ -42,7 +43,8 @@ export function DeviceDetailsLayout({
         {telemetry}
         {diagnostics}
       </Stack>
-      <EditModeGuard />
+      <NavigationGuard />
+      <DemoFeedbackDialog />
     </>
   );
 }

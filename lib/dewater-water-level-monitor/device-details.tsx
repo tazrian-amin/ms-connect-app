@@ -10,6 +10,7 @@ import { DeviceDetailsLayout } from "@/components/device-details/device-details-
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
 import { dewaterWaterLevelMonitorCommands } from "@/lib/bluetooth/commands/dewater-water-level-monitor";
+import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { dewaterWaterLevelMonitorProfile } from "./bluetooth-profile";
@@ -23,6 +24,7 @@ const alarmStatus: Record<"high" | "low" | "normal", { text: string; color: Chip
 export function DewaterWaterLevelMonitorDetails() {
   const messenger = getMessenger(dewaterWaterLevelMonitorProfile, dewaterWaterLevelMonitorCommands);
   const { data, updatedAt } = useDeviceState(messenger);
+  const waterLevels = useFieldHistory(messenger, "water_level");
 
   return (
     <DeviceDetailsLayout
@@ -70,7 +72,7 @@ export function DewaterWaterLevelMonitorDetails() {
       }
       telemetry={
         <TelemetrySection>
-          <TelemetryChart title="Water level" unit="m" />
+          <TelemetryChart title="Water level" unit="m" points={waterLevels} />
         </TelemetrySection>
       }
     />
