@@ -1,6 +1,8 @@
 @layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #fafafa;
   --foreground: #18181b;
@@ -34,27 +36,26 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
-    --secondary: #ffffff;
-    --secondary-foreground: #000000;
+/* MUI sets the `dark` class on <html> (system preference or user override). */
+:root.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --secondary: #ffffff;
+  --secondary-foreground: #000000;
 
-    --panel-bg: #18181b;
-    --panel-bg-alt: #232326;
-    --panel-border: #3f3f46;
-    --panel-border-muted: #27272a;
-    --panel-text: #fafafa;
-    --panel-text-muted: #a1a1aa;
-    --panel-control-bg: #27272a;
-    --panel-notice-bg: rgba(59, 130, 246, 0.18);
-    --panel-notice-border: rgba(96, 165, 250, 0.45);
-    --panel-notice-text: #93c5fd;
-    --panel-danger-bg: rgba(239, 68, 68, 0.18);
-    --panel-danger-border: rgba(248, 113, 113, 0.5);
-    --panel-danger-text: #fca5a5;
-  }
+  --panel-bg: #18181b;
+  --panel-bg-alt: #232326;
+  --panel-border: #3f3f46;
+  --panel-border-muted: #27272a;
+  --panel-text: #fafafa;
+  --panel-text-muted: #a1a1aa;
+  --panel-control-bg: #27272a;
+  --panel-notice-bg: rgba(59, 130, 246, 0.18);
+  --panel-notice-border: rgba(96, 165, 250, 0.45);
+  --panel-notice-text: #93c5fd;
+  --panel-danger-bg: rgba(239, 68, 68, 0.18);
+  --panel-danger-border: rgba(248, 113, 113, 0.5);
+  --panel-danger-text: #fca5a5;
 }
 
 body {
