@@ -16,7 +16,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import MailOutlineIcon from "@mui/icons-material/MailOutlined";
-import { CONTACT_EMAIL, contactEmailHref, openContactEmail } from "@/lib/contact";
+import { contactEmailHref, openContactEmail } from "@/lib/contact";
 import { cancelDemoFeedbackOffer, closeDemoFeedback, useDemoFeedback } from "@/lib/demo-feedback";
 import { getDevice } from "@/lib/homepage/devices";
 
@@ -93,7 +93,7 @@ function FeedbackForm({ deviceName }: { deviceName: string }) {
             />
           </FormGroup>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Prefer to write yourself? Email us at <Link href={contactEmailHref()}>{CONTACT_EMAIL}</Link>.
+            Prefer to write yourself? <Link href={contactEmailHref()}>Contact Sales</Link>.
           </Typography>
         </Stack>
       </DialogContent>

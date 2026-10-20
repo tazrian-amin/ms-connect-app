@@ -10,7 +10,8 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import MailOutlineIcon from "@mui/icons-material/MailOutlined";
-import { CONTACT_EMAIL, contactEmailHref, openContactEmail } from "@/lib/contact";
+import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
+import { contactEmailHref, openContactEmail } from "@/lib/contact";
 import { devices } from "./devices";
 
 const MESSAGE_MAX_LENGTH = 2_000;
@@ -36,10 +37,14 @@ export function ContactSection() {
   const [interested, setInterested] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneEntered, setPhoneEntered] = useState(false);
   const [message, setMessage] = useState("");
   const chosenTopic = topics.find(({ id }) => id === topic) ?? topics[0];
   const chosenDevices = devices.filter(({ slug }) => interested.includes(slug));
   const filledIn = message.trim() !== "" || chosenDevices.length > 0;
+  // The picker leaves the calling code (e.g. "+1") in the value, so only a typed number counts as entered.
+  const phoneInvalid = phoneEntered && !matchIsValidTel(phone);
 
   const toggleDevice = (slug: string) =>
     setInterested((current) => (current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]));
@@ -51,6 +56,7 @@ export function ContactSection() {
       chosenDevices.length > 0 && `Devices: ${chosenDevices.map((device) => device.name).join(", ")}`,
       name.trim() && `Name: ${name.trim()}`,
       company.trim() && `Company: ${company.trim()}`,
+      phoneEntered && `Phone: ${phone}`,
       message.trim() && `\n${message.trim()}`,
       "\nSent from the MS Connect app.",
     ]);
@@ -84,7 +90,7 @@ export function ContactSection() {
             your site, or have feedback for us? Tell us and we&apos;ll get back to you.
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Prefer to write yourself? Email us at <Link href={contactEmailHref()}>{CONTACT_EMAIL}</Link>.
+            Prefer to write yourself? <Link href={contactEmailHref()}>Contact Sales</Link>.
           </Typography>
         </Stack>
 
@@ -137,6 +143,20 @@ export function ContactSection() {
             />
           </Stack>
 
+          <MuiTelInput
+            label="Phone (optional)"
+            defaultCountry="US"
+            value={phone}
+            onChange={(value, info) => {
+              setPhone(value);
+              setPhoneEntered(Boolean(info.nationalNumber));
+            }}
+            error={phoneInvalid}
+            helperText={phoneInvalid ? "Enter a valid phone number, or leave it blank." : undefined}
+            autoComplete="tel"
+            fullWidth
+          />
+
           <TextField
             label="Message"
             placeholder="Tell us what you need, e.g. quantities, your site, or the changes you'd like."
@@ -152,7 +172,7 @@ export function ContactSection() {
               disableElevation
               size="large"
               startIcon={<MailOutlineIcon />}
-              disabled={!filledIn}
+              disabled={!filledIn || phoneInvalid}
               onClick={send}
             >
               Email us
