@@ -8,8 +8,14 @@ export function createConveyorVolumetricScaleDemo(): DemoSimulator<typeof convey
   let beltSpeed = 2.4;
   let volumeRate = 118;
   let totalVolume = 4_826.3;
+  const productionGoal = 6_000;
 
-  const reading = () => ({ volume_rate: volumeRate, total_volume: totalVolume, belt_speed: beltSpeed });
+  const reading = () => ({
+    volume_rate: volumeRate,
+    total_volume: totalVolume,
+    belt_speed: beltSpeed,
+    production_goal: productionGoal,
+  });
 
   return {
     deviceId: "DEMO-CVS-0001",

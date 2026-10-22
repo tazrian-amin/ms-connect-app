@@ -12,6 +12,7 @@ export function createConveyorVolumetricScaleProDemo(): DemoSimulator<typeof con
   let volumeRate = 132;
   let totalVolume = 9_412.8;
   let materialDensity = 1.6;
+  const productionGoal = 12_000;
   let ticks = 0;
 
   const massRate = () => Math.round(volumeRate * materialDensity * 10) / 10;
@@ -20,6 +21,7 @@ export function createConveyorVolumetricScaleProDemo(): DemoSimulator<typeof con
     total_volume: totalVolume,
     mass_rate: massRate(),
     belt_speed: beltSpeed,
+    production_goal: productionGoal,
   });
 
   return {

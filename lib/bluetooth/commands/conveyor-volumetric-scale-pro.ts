@@ -10,6 +10,7 @@ export const conveyorVolumetricScaleProCommands = defineCommands({
     mass_rate: "number", // t/h
     belt_speed: "number", // m/s
     material_density: "number", // t/m³
+    production_goal: "number", // m³ to produce this day or shift
   },
   actions: ["get_reading", "reset_total"],
   settings: {

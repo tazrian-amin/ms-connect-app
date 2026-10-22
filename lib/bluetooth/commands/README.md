@@ -263,7 +263,8 @@ The firmware reports a rejected command as `"status":"error"` and `msg` rather t
 | Field | `volume_rate` | number (m³/h) |
 | Field | `total_volume` | number (m³ since last reset) |
 | Field | `belt_speed` | number (m/s) |
-| Action | `get_reading` | replies `volume_rate`, `total_volume`, `belt_speed` |
+| Field | `production_goal` | number (m³ to produce this day or shift) |
+| Action | `get_reading` | replies `volume_rate`, `total_volume`, `belt_speed`, `production_goal` |
 | Action | `reset_total` | replies `total_volume` |
 
 ### Conveyor Volumetric Scale Pro
@@ -275,7 +276,8 @@ The firmware reports a rejected command as `"status":"error"` and `msg` rather t
 | Field | `mass_rate` | number (t/h) |
 | Field | `belt_speed` | number (m/s) |
 | Field | `material_density` | number (t/m³) |
-| Action | `get_reading` | replies `volume_rate`, `total_volume`, `mass_rate`, `belt_speed` |
+| Field | `production_goal` | number (m³ to produce this day or shift) |
+| Action | `get_reading` | replies `volume_rate`, `total_volume`, `mass_rate`, `belt_speed`, `production_goal` |
 | Action | `reset_total` | replies `total_volume` |
 | Setting | `set_material_density` | number (t/m³); replies `material_density` |
 

@@ -5,7 +5,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { ActionButton } from "@/components/device-details/command-controls";
 import { ControlSection } from "@/components/device-details/control-section";
 import { DashboardSection } from "@/components/device-details/dashboard-section";
-import { StatWidget } from "@/components/device-details/dashboard-widgets";
+import { DashboardWidget, StatWidget } from "@/components/device-details/dashboard-widgets";
 import { DeviceDetailsLayout } from "@/components/device-details/device-details-layout";
 import { TelemetryChart } from "@/components/device-details/telemetry-chart";
 import { TelemetrySection } from "@/components/device-details/telemetry-section";
@@ -14,6 +14,7 @@ import { useFieldHistory } from "@/lib/bluetooth/history";
 import { useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
 import { conveyorVolumetricScaleProfile } from "./bluetooth-profile";
+import { ConveyorStockpile } from "./conveyor-stockpile";
 
 export function ConveyorVolumetricScaleDetails() {
   const messenger = getMessenger(conveyorVolumetricScaleProfile, conveyorVolumetricScaleCommands);
@@ -49,6 +50,14 @@ export function ConveyorVolumetricScaleDetails() {
             />
           }
         >
+          <DashboardWidget label="Session production" sx={{ gridColumn: "1 / -1" }}>
+            <ConveyorStockpile
+              totalVolume={data.total_volume ?? null}
+              goal={data.production_goal ?? null}
+              volumeRate={data.volume_rate ?? null}
+              beltSpeed={data.belt_speed ?? null}
+            />
+          </DashboardWidget>
           <StatWidget label="Volume rate" value={data.volume_rate} unit="m³/h" />
           <StatWidget label="Total volume" value={data.total_volume} unit="m³" />
           <StatWidget label="Belt speed" value={data.belt_speed} unit="m/s" precision={2} />

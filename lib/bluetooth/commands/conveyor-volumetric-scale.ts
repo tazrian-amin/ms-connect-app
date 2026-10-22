@@ -8,6 +8,7 @@ export const conveyorVolumetricScaleCommands = defineCommands({
     volume_rate: "number", // m³/h
     total_volume: "number", // m³ since last reset
     belt_speed: "number", // m/s
+    production_goal: "number", // m³ to produce this day or shift
   },
   actions: ["get_reading", "reset_total"],
   settings: {},
