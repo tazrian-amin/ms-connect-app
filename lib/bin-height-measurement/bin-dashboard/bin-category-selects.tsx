@@ -8,7 +8,6 @@ import ListItemText from "@mui/material/ListItemText";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
-import AirIcon from "@mui/icons-material/Air";
 import GrainIcon from "@mui/icons-material/Grain";
 import WaterDropOutlinedIcon from "@mui/icons-material/WaterDropOutlined";
 import { BIN_CATEGORIES, MATERIAL_TYPES, type BinCategory, type MaterialType } from "./bin-categories";
@@ -68,7 +67,6 @@ export function BinCategorySelect({ value, onChange }: { value: BinCategory; onC
 const materialTypeIcons: Record<MaterialType, ReactNode> = {
   solid: <GrainIcon fontSize="small" />,
   liquid: <WaterDropOutlinedIcon fontSize="small" />,
-  gas: <AirIcon fontSize="small" />,
 };
 
 const materialTypeOptions = MATERIAL_TYPES.map((type) => ({ ...type, icon: materialTypeIcons[type.value] }));

@@ -12,7 +12,6 @@ export type BinCategory = (typeof BIN_CATEGORIES)[number]["value"];
 export const MATERIAL_TYPES = [
   { value: "solid", label: "Solid" },
   { value: "liquid", label: "Liquid" },
-  { value: "gas", label: "Gas" },
 ] as const;
 
 export type MaterialType = (typeof MATERIAL_TYPES)[number]["value"];
