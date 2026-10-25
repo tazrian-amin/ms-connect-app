@@ -199,10 +199,12 @@ Each table is the device's `data` field list (with types) and the commands it ac
 
 | Kind | Name | Type / reply |
 | --- | --- | --- |
-| Field | `flow_rate` | number (L/min) |
-| Field | `total_volume` | number (L since last reset) |
-| Action | `get_reading` | replies `flow_rate`, `total_volume` |
+| Field | `flow_rate` | number (US gal/min) |
+| Field | `total_volume` | number (US gal since last reset) |
+| Field | `flow_per_volt` | number (US gal/min per volt of the flow sensor's analog output) |
+| Action | `get_reading` | replies `flow_rate`, `total_volume`, `flow_per_volt` |
 | Action | `reset_total` | replies `total_volume` |
+| Setting | `set_flow_per_volt` | number (US gal/min per V), above 0; replies `flow_per_volt` |
 
 ### Dewater Water Level Monitor
 
