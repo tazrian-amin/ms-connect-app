@@ -4,18 +4,18 @@ import { drift, type DemoSimulator } from "@/lib/bluetooth/demo";
 const INTERVAL_MS = 2_000;
 
 /**
- * A sump that slowly fills and is pumped down again, so the level crosses the alarm levels every
- * few minutes and the alarm status changes with it.
+ * A sump that slowly fills and is pumped down again, so the distance from the pump stand to the water
+ * crosses both thresholds every few minutes and the alarm status changes with it.
  */
 export function createDewaterWaterLevelMonitorDemo(): DemoSimulator<typeof dewaterWaterLevelMonitorCommands> {
-  let waterLevel = 2.6;
-  let highAlarmLevel = 4.2;
-  let lowAlarmLevel = 1.2;
+  let waterDistance = 14.1;
+  let maxDistance = 22;
+  let minDistance = 12;
   let ticks = 0;
 
   const alarm = (): "high" | "low" | "normal" =>
-    waterLevel >= highAlarmLevel ? "high" : waterLevel <= lowAlarmLevel ? "low" : "normal";
-  const reading = () => ({ water_level: waterLevel, alarm: alarm() });
+    waterDistance <= minDistance ? "high" : waterDistance >= maxDistance ? "low" : "normal";
+  const reading = () => ({ water_distance: waterDistance, alarm: alarm() });
 
   return {
     deviceId: "DEMO-WL-0001",
@@ -24,26 +24,24 @@ export function createDewaterWaterLevelMonitorDemo(): DemoSimulator<typeof dewat
     intervalMs: INTERVAL_MS,
     tick() {
       ticks++;
-      const target = 2.7 + 1.9 * Math.sin(ticks / 30);
-      waterLevel = drift(waterLevel, target, 0.06, 0, 6, 2);
-      return ticks === 1
-        ? { ...reading(), high_alarm_level: highAlarmLevel, low_alarm_level: lowAlarmLevel }
-        : reading();
+      const target = 17 + 6.5 * Math.sin(ticks / 30);
+      waterDistance = drift(waterDistance, target, 0.2, 0, 60, 1);
+      return ticks === 1 ? { ...reading(), max_distance: maxDistance, min_distance: minDistance } : reading();
     },
     action() {
       return reading();
     },
     setting(name, value) {
-      const level = Number(value);
-      if (!Number.isFinite(level) || level < 0) return { error: "Level must be 0 m or more.", cmd: name };
-      if (name === "set_high_alarm_level") {
-        if (level <= lowAlarmLevel) return { error: "High level must be above the low level.", cmd: name };
-        highAlarmLevel = level;
-        return { high_alarm_level: level, alarm: alarm() };
+      const distance = Number(value);
+      if (!Number.isFinite(distance) || distance < 0) return { error: "Distance must be 0 ft or more.", cmd: name };
+      if (name === "set_max_distance") {
+        if (distance <= minDistance) return { error: "Max distance must be above the min distance.", cmd: name };
+        maxDistance = distance;
+        return { max_distance: distance, alarm: alarm() };
       }
-      if (level >= highAlarmLevel) return { error: "Low level must be below the high level.", cmd: name };
-      lowAlarmLevel = level;
-      return { low_alarm_level: level, alarm: alarm() };
+      if (distance >= maxDistance) return { error: "Min distance must be below the max distance.", cmd: name };
+      minDistance = distance;
+      return { min_distance: distance, alarm: alarm() };
     },
   };
 }
