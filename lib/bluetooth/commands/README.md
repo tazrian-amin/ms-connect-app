@@ -199,20 +199,24 @@ Each table is the device's `data` field list (with types) and the commands it ac
 
 | Kind | Name | Type / reply |
 | --- | --- | --- |
-| Field | `flow_rate` | number (L/min) |
-| Field | `total_volume` | number (L since last reset) |
-| Action | `get_reading` | replies `flow_rate`, `total_volume` |
+| Field | `flow_rate` | number (US gal/min) |
+| Field | `total_volume` | number (US gal since last reset) |
+| Field | `flow_per_volt` | number (US gal/min per volt of the flow sensor's analog output) |
+| Action | `get_reading` | replies `flow_rate`, `total_volume`, `flow_per_volt` |
 | Action | `reset_total` | replies `total_volume` |
+| Setting | `set_flow_per_volt` | number (US gal/min per V), above 0; replies `flow_per_volt` |
 
 ### Dewater Water Level Monitor
 
+The sensor hangs under the pump stand and looks down, so it reports the distance to the water: the further, the lower the water.
+
 | Kind | Name | Type / reply |
 | --- | --- | --- |
-| Field | `water_level` | number (m) |
-| Field | `alarm` | `"high" \| "low" \| "normal"` |
-| Field | `high_alarm_level`, `low_alarm_level` | number (m) |
-| Action | `get_reading` | replies `water_level`, `alarm` |
-| Setting | `set_high_alarm_level`, `set_low_alarm_level` | number (m); replies `high_alarm_level` / `low_alarm_level` |
+| Field | `water_distance` | number (ft from the sensor down to the water) |
+| Field | `alarm` | `"high" \| "low" \| "normal"`: the water is high when closer than `min_distance`, low when further than `max_distance` |
+| Field | `max_distance`, `min_distance` | number (ft) |
+| Action | `get_reading` | replies `water_distance`, `alarm` |
+| Setting | `set_max_distance`, `set_min_distance` | number (ft); replies `max_distance` / `min_distance` |
 
 ### Dewater Pump Float Replacement
 
