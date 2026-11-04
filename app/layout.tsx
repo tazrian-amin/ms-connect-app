@@ -2,14 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "./globals.css";
-import { ResumeCloudLinks } from "@/components/cloud/resume-cloud-links";
-import { UnloadGuard } from "@/components/bluetooth/unload-guard";
-import { AppUpdater } from "@/components/providers/app-updater";
-import { ErrorToast } from "@/components/providers/error-toast";
-import { OfflineNavigation } from "@/components/providers/offline-navigation";
 import { Providers } from "@/components/providers/providers";
-import { Footer } from "@/components/layout/footer";
-import { TopNav } from "@/components/layout/top-nav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,16 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <InitColorSchemeScript attribute="class" />
-        <Providers>
-          <TopNav />
-          {children}
-          <Footer />
-          <AppUpdater />
-          <ErrorToast />
-          <OfflineNavigation />
-          <UnloadGuard />
-          <ResumeCloudLinks />
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

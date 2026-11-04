@@ -32,6 +32,14 @@ export default function nextConfig(phase: string): NextConfig {
     // Tags client-side navigation responses with the build, so the service worker only caches
     // data that matches its own build, and Next.js reloads instead of mixing two deploys.
     deploymentId: buildId,
+    experimental: {
+      // Under `vercel build`, setting NEXT_DEPLOYMENT_ID during the build (resolveBuildId does)
+      // makes Next.js switch this on. Every server route then reads NEXT_DEPLOYMENT_ID at
+      // runtime, where Vercel does not set it, and fails with a 500. The ID baked in at build is
+      // the one the service worker compares against anyway.
+      // https://github.com/vercel/next.js/issues/94734
+      runtimeServerDeploymentId: false,
+    },
     env: {
       APP_BUILD_ID: buildId,
     },

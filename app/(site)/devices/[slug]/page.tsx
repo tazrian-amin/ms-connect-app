@@ -5,6 +5,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { deviceDetails } from "@/components/device-details/registry";
 import { BackButton } from "@/components/ui/back-button";
+import { ViewModeGuard } from "@/components/view-mode-guard";
 import { DeviceIconTile } from "@/lib/homepage/device-icon-tile";
 import { devices, getDevice } from "@/lib/homepage/devices";
 
@@ -27,31 +28,34 @@ export default async function DevicePage(props: PageProps<"/devices/[slug]">) {
   if (!device) notFound();
   const Details = deviceDetails[slug];
 
+  // Device details need view mode (see components/view-mode-guard.tsx).
   return (
-    <Container component="main" maxWidth="xl" sx={{ py: { xs: 3, sm: 4 } }}>
-      <BackButton href="/">All devices</BackButton>
+    <ViewModeGuard>
+      <Container component="main" maxWidth="xl" sx={{ py: { xs: 3, sm: 4 } }}>
+        <BackButton href="/">All devices</BackButton>
 
-      <Stack
-        direction="row"
-        spacing={{ xs: 1.5, sm: 2.5 }}
-        sx={{ alignItems: "center", mb: { xs: 1.5, sm: 2 } }}
-      >
-        <DeviceIconTile Icon={device.Icon} size={{ xs: 52, sm: 72 }} />
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{ fontWeight: 700, fontSize: { xs: "1.375rem", sm: "1.75rem", md: "2.125rem" }, lineHeight: 1.25 }}
+        <Stack
+          direction="row"
+          spacing={{ xs: 1.5, sm: 2.5 }}
+          sx={{ alignItems: "center", mb: { xs: 1.5, sm: 2 } }}
         >
-          {device.name}
+          <DeviceIconTile Icon={device.Icon} size={{ xs: 52, sm: 72 }} />
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ fontWeight: 700, fontSize: { xs: "1.375rem", sm: "1.75rem", md: "2.125rem" }, lineHeight: 1.25 }}
+          >
+            {device.name}
+          </Typography>
+        </Stack>
+        <Typography
+          sx={{ color: "text.secondary", fontSize: { xs: "0.9375rem", sm: "1rem" }, mb: { xs: 3, sm: 4 } }}
+        >
+          {device.description}
         </Typography>
-      </Stack>
-      <Typography
-        sx={{ color: "text.secondary", fontSize: { xs: "0.9375rem", sm: "1rem" }, mb: { xs: 3, sm: 4 } }}
-      >
-        {device.description}
-      </Typography>
 
-      <Details />
-    </Container>
+        <Details />
+      </Container>
+    </ViewModeGuard>
   );
 }
