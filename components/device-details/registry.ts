@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { AssetTrackerDetails } from "@/lib/asset-tracker/device-details";
 import { BinHeightMeasurementDetails } from "@/lib/bin-height-measurement/device-details";
 import { ConveyorVolumetricScaleDetails } from "@/lib/conveyor-volumetric-scale/device-details";
 import { ConveyorVolumetricScaleProDetails } from "@/lib/conveyor-volumetric-scale-pro/device-details";
@@ -14,4 +15,5 @@ export const deviceDetails: Record<string, ComponentType> = {
   "conveyor-volumetric-scale": ConveyorVolumetricScaleDetails,
   "conveyor-volumetric-scale-pro": ConveyorVolumetricScaleProDetails,
   "bin-height-measurement": BinHeightMeasurementDetails,
+  "asset-tracker": AssetTrackerDetails,
 };

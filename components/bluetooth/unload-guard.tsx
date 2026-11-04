@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { isAnyDeviceLinked, subscribeDeviceActivity } from "@/lib/bluetooth/registry";
+import { isAnyDeviceLinked, subscribeDeviceActivity } from "@/lib/connection/registry";
 
 /**
  * Asks for confirmation before the page is reloaded or closed while a device is linked.

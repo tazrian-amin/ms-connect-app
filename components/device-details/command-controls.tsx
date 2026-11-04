@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type SubmitEvent, type ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -112,7 +112,7 @@ export function SettingForm<C extends CommandSet, S extends SettingName<C>>({
   const current = (reported ?? lastSent?.value ?? null) as FieldValue | null;
   const value = draft ?? current ?? defaultValue(type);
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = parseValue(value, type, config);
     if (typeof parsed === "object") return showError(parsed.problem);

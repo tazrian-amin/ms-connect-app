@@ -13,9 +13,9 @@ import {
   type SettingName,
   type SettingValue,
 } from "./commands/schema";
-import type { BluetoothConnection } from "./connection";
+import type { BluetoothConnection } from "@/lib/connection/connection";
 import type { DeviceProfile, MessagingCharacteristic } from "./profile";
-import { getConnection, type ConnectionInstance } from "./registry";
+import { getConnection, type ConnectionInstance } from "@/lib/connection/registry";
 
 // A line this long without a "\n" means the stream is out of sync; drop it rather than grow forever.
 const MAX_LINE_LENGTH = 4_096;

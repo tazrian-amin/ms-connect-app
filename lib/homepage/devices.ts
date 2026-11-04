@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import {
+  AssetTrackerIcon,
   BinHeightIcon,
   ConveyorScaleIcon,
   ConveyorScaleProIcon,
@@ -52,6 +53,12 @@ export const devices: Device[] = [
     name: "Dewater Water Level Monitor",
     description: "Reports Instantaneous Water Level; Sends Alerts When Outside User Settable High & Low Levels.",
     Icon: WaterLevelIcon,
+  },
+  {
+    slug: "asset-tracker",
+    name: "Asset Tracker",
+    description: "Reports the location, motion and battery level of vehicles and equipment, reporting more often while the asset is moving.",
+    Icon: AssetTrackerIcon,
   },
 ];
 

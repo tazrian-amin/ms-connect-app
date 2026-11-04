@@ -5,10 +5,10 @@ import {
   type BluetoothConnection,
   type ConnectionState,
   type ConnectionStatus,
-} from "./connection";
+} from "@/lib/connection/connection";
 import type { DeviceMessenger, DeviceState } from "./messaging";
 import type { DeviceProfile } from "./profile";
-import { getConnection, getProfileStatus, subscribeDeviceActivity } from "./registry";
+import { getConnection, getProfileStatus, subscribeDeviceActivity } from "@/lib/connection/registry";
 
 export type BluetoothSupport =
   | "checking"

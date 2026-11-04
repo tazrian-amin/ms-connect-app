@@ -7,7 +7,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-import { endAllDemos, isAnyDemoRunning, subscribeDeviceActivity } from "@/lib/bluetooth/registry";
+import { endAllDemos, isAnyDemoRunning, subscribeDeviceActivity } from "@/lib/connection/registry";
 import {
   disableEditMode,
   dismissEditModeWarning,

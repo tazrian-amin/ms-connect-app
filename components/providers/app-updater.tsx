@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
-import { disconnectAll, isAnyDeviceLinked, subscribeDeviceActivity } from "@/lib/bluetooth/registry";
+import { disconnectAll, isAnyDeviceLinked, subscribeDeviceActivity } from "@/lib/connection/registry";
 
 // Installed apps can stay open for a long time on one screen, which never triggers the
 // browser's own update check, so also check on a timer and whenever the app resurfaces.

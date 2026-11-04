@@ -77,3 +77,13 @@ export function BinHeightIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function AssetTrackerIcon(props: IconProps) {
+  return (
+    <svg {...base} stroke="#d6336c" {...props}>
+      <path d="M16 27s-8-7.5-8-13.5a8 8 0 0 1 16 0C24 19.5 16 27 16 27z" />
+      <circle cx="16" cy="13.5" r="3" />
+      <path d="M10 29h12" />
+    </svg>
+  );
+}

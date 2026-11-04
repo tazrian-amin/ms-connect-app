@@ -1,8 +1,9 @@
-import { toHex } from "./codec";
-import { bleLog } from "./debug";
-import { DemoLink, type DemoSimulator } from "./demo";
-import { describeBluetoothError, isChooserCancelled } from "./errors";
-import type { DeviceProfile } from "./profile";
+import { toHex } from "@/lib/bluetooth/codec";
+import { bleLog } from "@/lib/bluetooth/debug";
+import { DemoLink, type DemoSimulator } from "@/lib/bluetooth/demo";
+import { describeBluetoothError, isChooserCancelled } from "@/lib/bluetooth/errors";
+import type { DeviceProfile } from "@/lib/bluetooth/profile";
+import { CloudLink, type CloudCache, type CloudSource } from "@/lib/cloud/cloud";
 
 export type ConnectionStatus = "disconnected" | "requesting" | "connecting" | "connected" | "reconnecting";
 
@@ -11,8 +12,10 @@ export type ConnectionState = {
   /** Name the hardware advertises, from when the user picks it until the link is disconnected. */
   deviceName: string | null;
   error: string | null;
-  /** True while linked to a simulated device (see ./demo.ts) rather than real hardware. */
+  /** True while linked to a simulated device (see lib/bluetooth/demo.ts) rather than real hardware. */
   demo: boolean;
+  /** True while linked through the backend (see lib/cloud/cloud.ts) rather than over Bluetooth. */
+  cloud: boolean;
 };
 
 type ValueListener = (value: DataView) => void;
@@ -30,6 +33,7 @@ export const initialConnectionState: ConnectionState = {
   deviceName: null,
   error: null,
   demo: false,
+  cloud: false,
 };
 
 const CONNECT_TIMEOUT_MS = 15_000;
@@ -44,6 +48,8 @@ const RECONNECT_DELAYS_MS = [1_000, 2_000, 4_000, 8_000, 16_000];
  * - If the link drops on its own, it reconnects with backoff and restores notification subscriptions.
  * - State is exposed through `getState`/`subscribeState` for `useSyncExternalStore`.
  * - `connectDemo()` links to a simulator instead, for trying the app without the hardware.
+ * - `connectCloud()` links through the backend instead, for devices that report over their own network;
+ *   `resumeCloud()` picks such a link up again after the app restarts, even offline.
  */
 export class BluetoothConnection<K extends string = string> {
   readonly profile: DeviceProfile<K>;
@@ -64,6 +70,7 @@ export class BluetoothConnection<K extends string = string> {
   #reconnectAttempt = 0;
   #reconnectTimer: ReturnType<typeof setTimeout> | undefined;
   #demo: DemoLink | null = null;
+  #cloud: CloudLink | null = null;
 
   constructor(profile: DeviceProfile<K>, options: ConnectionOptions = {}) {
     this.profile = profile;
@@ -133,10 +140,61 @@ export class BluetoothConnection<K extends string = string> {
     this.#setState({ status: "connected", deviceName: simulator.name, error: null, demo: true });
   }
 
+  /**
+   * Links through the backend to the unit `source` describes, instead of over Bluetooth. Rejects
+   * with a message for the user, e.g. for a serial number the backend doesn't know, and leaves the
+   * state's `error` alone so the caller decides where to show it. Ended by `disconnect()`.
+   */
+  async connectCloud(source: CloudSource, cache?: CloudCache): Promise<void> {
+    if (this.#state.status !== "disconnected") return;
+    bleLog("connection", `linking through the cloud to "${source.name}"`);
+    const link = this.#createCloudLink(source, cache);
+    this.#setState({ status: "connecting", deviceName: source.name, error: null, cloud: true });
+    try {
+      await link.start();
+    } catch (error) {
+      // Disconnected while the first report was on its way; nothing to report.
+      if (this.#cloud !== link) return;
+      link.stop();
+      this.#cloud = null;
+      this.#setState({ status: "disconnected" });
+      throw error;
+    }
+    if (this.#cloud === link) this.#setState({ status: "connected" });
+  }
+
+  /**
+   * Links again to a unit linked through the cloud on an earlier visit. Shows the cached data at
+   * once and reconnects until the backend answers, however long that takes, e.g. while offline.
+   */
+  resumeCloud(source: CloudSource, cache: CloudCache): void {
+    if (this.#state.status !== "disconnected") return;
+    bleLog("connection", `resuming cloud link to "${source.name}"`);
+    const link = this.#createCloudLink(source, cache);
+    this.#setState({ status: "reconnecting", deviceName: source.name, error: null, cloud: true });
+    link.resume();
+  }
+
+  #createCloudLink(source: CloudSource, cache?: CloudCache): CloudLink {
+    const link = new CloudLink(
+      source,
+      // The backend only relays the messaging characteristic.
+      (value) => this.#valueListeners.get("fromDevice" as K)?.forEach((listener) => listener(value)),
+      (reachable) => {
+        if (this.#cloud === link) this.#setState({ status: reachable ? "connected" : "reconnecting" });
+      },
+      cache,
+    );
+    this.#cloud = link;
+    return link;
+  }
+
   /** Closes the link and stops any automatic reconnect. */
   disconnect(): void {
     this.#demo?.stop();
     this.#demo = null;
+    this.#cloud?.stop();
+    this.#cloud = null;
     this.#userDisconnected = true;
     clearTimeout(this.#reconnectTimer);
     this.#device?.gatt?.disconnect();
@@ -148,6 +206,8 @@ export class BluetoothConnection<K extends string = string> {
   read(key: K): Promise<DataView> {
     const demo = this.#demo;
     if (demo) return this.#enqueue(async () => demo.read(key));
+    const cloud = this.#cloud;
+    if (cloud) return this.#enqueue(async () => cloud.read(key));
     return this.#enqueue(async () => (await this.#characteristic(key)).readValue());
   }
 
@@ -158,6 +218,8 @@ export class BluetoothConnection<K extends string = string> {
   write(key: K, value: BufferSource): Promise<void> {
     const demo = this.#demo;
     if (demo) return this.#enqueue(async () => demo.write(value));
+    const cloud = this.#cloud;
+    if (cloud) return this.#enqueue(() => cloud.write(value));
     return this.#enqueue(async () => {
       const characteristic = await this.#characteristic(key);
       if (characteristic.properties.write) {
@@ -181,6 +243,13 @@ export class BluetoothConnection<K extends string = string> {
     listeners.add(listener);
     if (listeners.size === 1 && this.#state.status === "connected") {
       this.#enqueue(() => this.#startNotifications(key)).catch(this.#reportError);
+    }
+    // A cloud link may have had its data before anyone listened, e.g. resumed while on another page.
+    const cloud = this.#cloud;
+    if (cloud && key === ("fromDevice" as K) && listeners.size === 1) {
+      queueMicrotask(() => {
+        if (this.#cloud === cloud) cloud.replay();
+      });
     }
 
     return () => {
@@ -277,8 +346,8 @@ export class BluetoothConnection<K extends string = string> {
   }
 
   async #startNotifications(key: K): Promise<void> {
-    // A demo link delivers to every subscriber already.
-    if (this.#demo) return;
+    // Demo and cloud links deliver to every subscriber already.
+    if (this.#demo || this.#cloud) return;
     const characteristic = await this.#characteristic(key);
     await characteristic.startNotifications();
     bleLog("connection", `notifications on for "${key}"`);
@@ -306,7 +375,7 @@ export class BluetoothConnection<K extends string = string> {
     }
     if (patch.error) bleLog("connection", `error shown: ${patch.error}`);
     // A name only describes a live (or in-progress) link; don't keep showing the last device once it's gone.
-    if (patch.status === "disconnected") patch = { ...patch, deviceName: null, demo: false };
+    if (patch.status === "disconnected") patch = { ...patch, deviceName: null, demo: false, cloud: false };
     this.#state = { ...this.#state, ...patch };
     this.#stateListeners.forEach((listener) => listener());
   }

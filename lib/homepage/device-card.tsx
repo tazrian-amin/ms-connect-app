@@ -7,9 +7,9 @@ import CardActionArea from "@mui/material/CardActionArea";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { ConnectionStatusChip } from "@/components/bluetooth/connection-status-chip";
+import { ConnectionStatusChip } from "@/components/connection/connection-status-chip";
 import { useProfileStatus } from "@/lib/bluetooth/hooks";
-import { deviceProfiles } from "@/lib/bluetooth/registry";
+import { deviceCloudSources, deviceProfiles } from "@/lib/connection/registry";
 import { DeviceIconTile } from "./device-icon-tile";
 import type { Device } from "./devices";
 
@@ -41,7 +41,9 @@ export function DeviceCard({ device }: { device: Device }) {
       >
         <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
           <DeviceIconTile Icon={device.Icon} size={48} />
-          {status !== "disconnected" && <ConnectionStatusChip status={status} />}
+          {status !== "disconnected" && (
+            <ConnectionStatusChip status={status} cloud={deviceCloudSources[device.slug] !== undefined} />
+          )}
         </Stack>
 
         <Typography

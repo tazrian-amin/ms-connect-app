@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { BluetoothConnection } from "@/lib/bluetooth/connection";
+import type { BluetoothConnection } from "@/lib/connection/connection";
 
 /*
  * Edit mode guards a device's settings against accidental changes. Controls that change the

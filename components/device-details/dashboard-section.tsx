@@ -20,7 +20,7 @@ export function DashboardSection({ updatedAt, action, children }: DashboardSecti
     <DeviceSection
       title="Dashboard"
       description={
-        updatedAt ? `Last update ${new Date(updatedAt).toLocaleTimeString()}` : "Waiting for data from the device."
+        updatedAt ? `Last update ${formatUpdatedAt(updatedAt)}` : "Waiting for data from the device."
       }
       action={action}
     >
@@ -29,4 +29,11 @@ export function DashboardSection({ updatedAt, action, children }: DashboardSecti
       </Box>
     </DeviceSection>
   );
+}
+
+/** Just the time for today's data; with the date for older data, e.g. a tracker's last report shown offline. */
+function formatUpdatedAt(timestamp: number): string {
+  const date = new Date(timestamp);
+  if (date.toDateString() === new Date().toDateString()) return date.toLocaleTimeString();
+  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }

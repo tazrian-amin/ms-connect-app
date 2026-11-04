@@ -1,3 +1,4 @@
+import { assetTrackerCommands } from "./asset-tracker";
 import { binHeightMeasurementCommands } from "./bin-height-measurement";
 import { conveyorVolumetricScaleCommands } from "./conveyor-volumetric-scale";
 import { conveyorVolumetricScaleProCommands } from "./conveyor-volumetric-scale-pro";
@@ -14,4 +15,5 @@ export const deviceCommands: Record<string, CommandSet> = {
   "conveyor-volumetric-scale": conveyorVolumetricScaleCommands,
   "conveyor-volumetric-scale-pro": conveyorVolumetricScaleProCommands,
   "bin-height-measurement": binHeightMeasurementCommands,
+  "asset-tracker": assetTrackerCommands,
 };

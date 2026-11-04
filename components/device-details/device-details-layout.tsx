@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Stack from "@mui/material/Stack";
-import type { BluetoothConnection } from "@/lib/bluetooth/connection";
+import type { BluetoothConnection } from "@/lib/connection/connection";
 import { ConnectionSection } from "./connection-section";
 import { DemoFeedbackDialog } from "./demo-feedback-dialog";
 import { NavigationGuard } from "./navigation-guard";

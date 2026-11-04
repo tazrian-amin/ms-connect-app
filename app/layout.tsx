@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "./globals.css";
+import { ResumeCloudLinks } from "@/components/cloud/resume-cloud-links";
 import { UnloadGuard } from "@/components/bluetooth/unload-guard";
 import { AppUpdater } from "@/components/providers/app-updater";
 import { ErrorToast } from "@/components/providers/error-toast";
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ErrorToast />
           <OfflineNavigation />
           <UnloadGuard />
+          <ResumeCloudLinks />
         </Providers>
       </body>
     </html>

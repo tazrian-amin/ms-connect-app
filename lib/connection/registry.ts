@@ -1,3 +1,6 @@
+import { assetTrackerProfile } from "@/lib/asset-tracker/bluetooth-profile";
+import { createAssetTrackerCloudSource } from "@/lib/asset-tracker/cloud";
+import { createAssetTrackerDemo } from "@/lib/asset-tracker/demo";
 import { binHeightMeasurementProfile } from "@/lib/bin-height-measurement/bluetooth-profile";
 import { createBinHeightMeasurementDemo } from "@/lib/bin-height-measurement/demo";
 import { conveyorVolumetricScaleProfile } from "@/lib/conveyor-volumetric-scale/bluetooth-profile";
@@ -12,9 +15,10 @@ import { dischargeWaterFlowMonitorProfile } from "@/lib/discharge-water-flow-mon
 import { createDischargeWaterFlowMonitorDemo } from "@/lib/discharge-water-flow-monitor/demo";
 import { showError } from "@/lib/error-toast";
 import { getDevice } from "@/lib/homepage/devices";
+import type { DemoSimulator } from "@/lib/bluetooth/demo";
+import type { DeviceProfile, MessagingCharacteristic, StandardCharacteristic } from "@/lib/bluetooth/profile";
+import type { CloudSource } from "@/lib/cloud/cloud";
 import { BluetoothConnection, type ConnectionStatus } from "./connection";
-import type { DemoSimulator } from "./demo";
-import type { DeviceProfile, MessagingCharacteristic, StandardCharacteristic } from "./profile";
 
 /**
  * Bluetooth profile for each device slug. Every profile includes the standard and messaging
@@ -27,9 +31,10 @@ export const deviceProfiles: Record<string, DeviceProfile<StandardCharacteristic
   "conveyor-volumetric-scale": conveyorVolumetricScaleProfile,
   "conveyor-volumetric-scale-pro": conveyorVolumetricScaleProProfile,
   "bin-height-measurement": binHeightMeasurementProfile,
+  "asset-tracker": assetTrackerProfile,
 };
 
-/** Creates a fresh simulator for each device slug that has a demo (see ./demo.ts). */
+/** Creates a fresh simulator for each device slug that has a demo (see lib/bluetooth/demo.ts). */
 export const deviceDemos: Partial<Record<string, () => DemoSimulator>> = {
   "discharge-water-flow-monitor": createDischargeWaterFlowMonitorDemo,
   "dewater-water-level-monitor": createDewaterWaterLevelMonitorDemo,
@@ -37,6 +42,16 @@ export const deviceDemos: Partial<Record<string, () => DemoSimulator>> = {
   "conveyor-volumetric-scale": createConveyorVolumetricScaleDemo,
   "conveyor-volumetric-scale-pro": createConveyorVolumetricScaleProDemo,
   "bin-height-measurement": createBinHeightMeasurementDemo,
+  "asset-tracker": createAssetTrackerDemo,
+};
+
+/**
+ * For device types that report to the backend rather than over Bluetooth (see lib/cloud/cloud.ts):
+ * the backend's view of the unit with a given serial number. Their Connect button asks for a serial
+ * number instead of opening the Bluetooth device chooser (see lib/cloud/remembered-links.ts).
+ */
+export const deviceCloudSources: Partial<Record<string, (serialNumber: string) => CloudSource>> = {
+  "asset-tracker": createAssetTrackerCloudSource,
 };
 
 /**
@@ -135,13 +150,13 @@ export function disconnectAll(): void {
 }
 
 /**
- * True while any real device is linked or being linked; app updates wait until this is false.
- * A demo doesn't count, since a reload loses nothing that matters.
+ * True while any real device is linked or being linked over Bluetooth; app updates wait until this
+ * is false. Demo and cloud links don't count, since a reload loses nothing that matters.
  */
 export function isAnyDeviceLinked(): boolean {
   for (const [, connection] of allConnections()) {
-    const { status, demo } = connection.getState();
-    if (status !== "disconnected" && !demo) return true;
+    const { status, demo, cloud } = connection.getState();
+    if (status !== "disconnected" && !demo && !cloud) return true;
   }
   return false;
 }

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { releaseConnection } from "@/lib/bluetooth/registry";
+import { releaseConnection } from "@/lib/connection/registry";
 import {
   DEFAULT_MATERIAL_TYPE,
   isBinCategory,

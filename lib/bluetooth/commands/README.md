@@ -302,6 +302,25 @@ Agreed with `firmware/Bin-Height-Measurement-Firmware`, whose field and command 
 | Setting | `set_device_id` | string, 1–127 printable ASCII characters; replies `time_synced`, `sample_period_ms` with the new `deviceId` |
 | Setting | `set_sample_period_ms` | number (ms), 1000–3600000, stored on the device; replies `time_synced`, `sample_period_ms` |
 
+### Asset Tracker
+
+Battery powered. `deviceId` and `timestamp` (section 3) carry the unit's ID and when the location was taken; `timestamp` must be epoch ms, not an ISO string.
+
+| Kind | Name | Type / reply |
+| --- | --- | --- |
+| Field | `device_name` | string, what the tracker is fitted to (e.g. `"Truck 12"`) |
+| Field | `latitude`, `longitude` | number (decimal degrees, WGS 84) |
+| Field | `battery_percentage` | number (0–100) |
+| Field | `battery_voltage` | number (V) |
+| Field | `is_moving`, `is_charging` | boolean |
+| Field | `tracking_mode` | `"active" \| "inactive"`: inactive once stationary for `inactivity_timeout_s` |
+| Field | `stationary_interval_s`, `moving_interval_s` | number (s between location reports while stationary / moving) |
+| Field | `inactivity_timeout_s` | number (s without motion before tracking goes inactive) |
+| Action | `get_reading` | replies `device_name`, `latitude`, `longitude`, `battery_percentage`, `battery_voltage`, `is_moving`, `is_charging`, `tracking_mode` |
+| Action | `get_config` | replies `stationary_interval_s`, `moving_interval_s`, `inactivity_timeout_s`; the app sends it on every connect |
+| Setting | `set_device_name` | string, 1–32 characters; replies `device_name` |
+| Setting | `set_stationary_interval_s`, `set_moving_interval_s`, `set_inactivity_timeout_s` | number (s), 1 or more; replies the field of the same name |
+
 ## 7. Firmware checklist
 
 - [ ] Advertises the agreed name prefix and exposes NUS (or the serial module's `ffe0`/`ffe1`).

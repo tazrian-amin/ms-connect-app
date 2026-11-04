@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { decodeText } from "@/lib/bluetooth/codec";
-import type { BluetoothConnection } from "@/lib/bluetooth/connection";
+import type { BluetoothConnection } from "@/lib/connection/connection";
 import type { StandardCharacteristic } from "@/lib/bluetooth/profile";
 
 const fields: { key: StandardCharacteristic; label: string; format: (value: DataView) => string }[] = [
