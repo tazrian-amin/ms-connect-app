@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
@@ -23,8 +24,12 @@ function lastChanged(updatedAt: number | undefined): string {
 
 // proxy.ts serves the sign-in form here until the admin signs in; this checks again regardless.
 export default async function AdminPage() {
+  // Rendered per request only. Without this the build would prerender the page, and reading
+  // the settings at build time fails where storage is only reachable at runtime.
+  await connection();
+  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   const settings = await getAccessSettings({ fresh: true });
-  if (!readAdmin(settings, (await cookies()).get(ADMIN_COOKIE)?.value)) redirect("/admin");
+  if (!readAdmin(settings, token)) redirect("/admin");
 
   return (
     <Container component="main" maxWidth="sm" sx={{ py: { xs: 4, sm: 6 } }}>
