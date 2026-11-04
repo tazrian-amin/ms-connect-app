@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# access settings when no Redis is configured (lib/access/settings-store.ts)
+/.data/

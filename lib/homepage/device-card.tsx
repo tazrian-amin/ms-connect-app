@@ -5,21 +5,42 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardActionArea from "@mui/material/CardActionArea";
 import Stack from "@mui/material/Stack";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { ConnectionStatusChip } from "@/components/bluetooth/connection-status-chip";
 import { useProfileStatus } from "@/lib/bluetooth/hooks";
 import { deviceProfiles } from "@/lib/bluetooth/registry";
 import { DeviceIconTile } from "./device-icon-tile";
 import type { Device } from "./devices";
 
-export function DeviceCard({ device }: { device: Device }) {
+type DeviceCardProps = {
+  device: Device;
+  /** Whether view mode is on. Off, the name and description are hidden and the card does not open. */
+  revealed: boolean;
+  /** The eye button and, while hidden, the card itself: asks for the view code, or turns view mode off. */
+  onToggleView: () => void;
+};
+
+// Shown blurred in place of the real text while view mode is off. The real text is never
+// rendered then, so it cannot be read from the page either.
+const HIDDEN_NAME = "Device name hidden";
+const HIDDEN_DESCRIPTION = "Enter the view code to see this device and its description.";
+
+const hiddenText = { filter: "blur(5px)", userSelect: "none" } as const;
+
+export function DeviceCard({ device, revealed, onToggleView }: DeviceCardProps) {
   const status = useProfileStatus(deviceProfiles[device.slug]);
+  const viewLabel = revealed ? "Hide device details" : "Show device details";
 
   return (
     <Card
       variant="outlined"
       sx={{
+        position: "relative",
         height: "100%",
         borderRadius: 2,
         transition: "border-color 150ms, transform 150ms",
@@ -28,8 +49,9 @@ export function DeviceCard({ device }: { device: Device }) {
       }}
     >
       <CardActionArea
-        component={Link}
-        href={`/devices/${device.slug}`}
+        {...(revealed
+          ? { component: Link, href: `/devices/${device.slug}` }
+          : { onClick: onToggleView, "aria-label": "Hidden device. Enter the view code to open it." })}
         sx={{
           height: "100%",
           display: "flex",
@@ -39,7 +61,8 @@ export function DeviceCard({ device }: { device: Device }) {
           p: { xs: 2, sm: 2.5 },
         }}
       >
-        <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+        {/* Right padding leaves room for the eye button, which sits outside the link. */}
+        <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between", gap: 1, pr: 5 }}>
           <DeviceIconTile Icon={device.Icon} size={48} />
           {status !== "disconnected" && <ConnectionStatusChip status={status} />}
         </Stack>
@@ -49,7 +72,7 @@ export function DeviceCard({ device }: { device: Device }) {
           component="h3"
           sx={{ mt: 2, fontWeight: 600, fontSize: { xs: "0.9375rem", sm: "1rem" }, lineHeight: 1.4 }}
         >
-          {device.name}
+          {revealed ? device.name : <Box component="span" aria-hidden sx={hiddenText}>{HIDDEN_NAME}</Box>}
         </Typography>
         <Typography
           variant="body2"
@@ -63,7 +86,7 @@ export function DeviceCard({ device }: { device: Device }) {
             overflow: "hidden",
           }}
         >
-          {device.description}
+          {revealed ? device.description : <Box component="span" aria-hidden sx={hiddenText}>{HIDDEN_DESCRIPTION}</Box>}
         </Typography>
 
         <Box
@@ -80,10 +103,22 @@ export function DeviceCard({ device }: { device: Device }) {
             "& svg": { fontSize: 16, color: "primary.main", transition: "transform 150ms" },
           }}
         >
-          Open Device
+          {revealed ? "Open Device" : "Reveal Device"}
           <ArrowForwardIcon />
         </Box>
       </CardActionArea>
+
+      <Tooltip title={viewLabel}>
+        <IconButton
+          aria-label={viewLabel}
+          aria-pressed={revealed}
+          onClick={onToggleView}
+          size="small"
+          sx={{ position: "absolute", top: { xs: 12, sm: 16 }, right: { xs: 12, sm: 16 }, color: "text.secondary" }}
+        >
+          {revealed ? <VisibilityOutlinedIcon fontSize="small" /> : <VisibilityOffOutlinedIcon fontSize="small" />}
+        </IconButton>
+      </Tooltip>
     </Card>
   );
 }

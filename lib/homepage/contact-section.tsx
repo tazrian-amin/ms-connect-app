@@ -15,6 +15,7 @@ import MailOutlineIcon from "@mui/icons-material/MailOutlined";
 import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
 import { contactEmailHref, openContactEmail } from "@/lib/contact";
 import { devices } from "./devices";
+import { useViewMode } from "../access/session-client";
 
 const MESSAGE_MAX_LENGTH = 2_000;
 const FIELD_MAX_LENGTH = 100;
@@ -35,6 +36,7 @@ type TopicId = (typeof topics)[number]["id"];
  * email app with the message filled in (see lib/contact.ts).
  */
 export function ContactSection() {
+  const viewMode = useViewMode();
   const [topic, setTopic] = useState<TopicId>("learn");
   const [interested, setInterested] = useState<string[]>([]);
   const [name, setName] = useState("");
@@ -49,10 +51,12 @@ export function ContactSection() {
   const phoneInvalid = phoneEntered && !matchIsValidTel(phone);
 
   const send = () => {
-    const about = chosenDevices.length === 1 ? `: ${chosenDevices[0].name}` : "";
+    const about =
+      chosenDevices.length === 1 ? `: ${chosenDevices[0].name}` : "";
     openContactEmail(`${chosenTopic.subject}${about}`, [
       `Topic: ${chosenTopic.label}`,
-      chosenDevices.length > 0 && `Devices: ${chosenDevices.map((device) => device.name).join(", ")}`,
+      chosenDevices.length > 0 &&
+        `Devices: ${chosenDevices.map((device) => device.name).join(", ")}`,
       name.trim() && `Name: ${name.trim()}`,
       company.trim() && `Company: ${company.trim()}`,
       phoneEntered && `Phone: ${phone}`,
@@ -74,7 +78,10 @@ export function ContactSection() {
           gap: { xs: 3, md: 6 },
           // minmax(0, …) lets columns shrink below their content, so a long device selection truncates
           // instead of widening the card past the screen.
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 3fr)" },
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            md: "minmax(0, 2fr) minmax(0, 3fr)",
+          },
         }}
       >
         <Stack spacing={1.5}>
@@ -82,16 +89,26 @@ export function ContactSection() {
             id="contact-us"
             variant="h5"
             component="h2"
-            sx={{ fontWeight: 500, fontSize: { xs: "1.125rem", sm: "1.25rem" } }}
+            sx={{
+              fontWeight: 500,
+              fontSize: { xs: "1.125rem", sm: "1.25rem" },
+            }}
           >
             Get in Touch
           </Typography>
-          <Typography sx={{ color: "text.secondary", fontSize: { xs: "0.9375rem", sm: "1rem" } }}>
-            Interested in a device you don&apos;t have yet? Want to place an order, need something customized for
-            your site, or have feedback for us? Tell us and we&apos;ll get back to you.
+          <Typography
+            sx={{
+              color: "text.secondary",
+              fontSize: { xs: "0.9375rem", sm: "1rem" },
+            }}
+          >
+            Interested in a device you don&apos;t have yet? Want to place an
+            order, need something customized for your site, or have feedback for
+            us? Tell us and we&apos;ll get back to you.
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Prefer to write yourself? <Link href={contactEmailHref()}>Contact Sales</Link>.
+            Prefer to write yourself?{" "}
+            <Link href={contactEmailHref()}>Contact Sales</Link>.
           </Typography>
         </Stack>
 
@@ -111,24 +128,32 @@ export function ContactSection() {
               ))}
             </TextField>
             <TextField
+              disabled={!viewMode}
               select
               label="Devices (optional)"
               value={interested}
               onChange={(event) => {
                 const { value } = event.target as { value: string | string[] };
-                setInterested(typeof value === "string" ? value.split(",") : value);
+                setInterested(
+                  typeof value === "string" ? value.split(",") : value,
+                );
               }}
               slotProps={{
                 select: {
                   multiple: true,
-                  renderValue: () => chosenDevices.map((device) => device.name).join(", "),
+                  renderValue: () =>
+                    chosenDevices.map((device) => device.name).join(", "),
                 },
               }}
               fullWidth
             >
               {devices.map(({ slug, name: deviceName }) => (
                 <MenuItem key={slug} value={slug}>
-                  <Checkbox checked={interested.includes(slug)} size="small" sx={{ py: 0, pl: 0 }} />
+                  <Checkbox
+                    checked={interested.includes(slug)}
+                    size="small"
+                    sx={{ py: 0, pl: 0 }}
+                  />
                   <ListItemText primary={deviceName} />
                 </MenuItem>
               ))}
@@ -139,14 +164,18 @@ export function ContactSection() {
             <TextField
               label="Your name (optional)"
               value={name}
-              onChange={(event) => setName(event.target.value.slice(0, FIELD_MAX_LENGTH))}
+              onChange={(event) =>
+                setName(event.target.value.slice(0, FIELD_MAX_LENGTH))
+              }
               autoComplete="name"
               fullWidth
             />
             <TextField
               label="Company (optional)"
               value={company}
-              onChange={(event) => setCompany(event.target.value.slice(0, FIELD_MAX_LENGTH))}
+              onChange={(event) =>
+                setCompany(event.target.value.slice(0, FIELD_MAX_LENGTH))
+              }
               autoComplete="organization"
               fullWidth
             />
@@ -161,7 +190,11 @@ export function ContactSection() {
               setPhoneEntered(Boolean(info.nationalNumber));
             }}
             error={phoneInvalid}
-            helperText={phoneInvalid ? "Enter a valid phone number, or leave it blank." : undefined}
+            helperText={
+              phoneInvalid
+                ? "Enter a valid phone number, or leave it blank."
+                : undefined
+            }
             autoComplete="tel"
             fullWidth
           />
@@ -172,7 +205,9 @@ export function ContactSection() {
             multiline
             minRows={4}
             value={message}
-            onChange={(event) => setMessage(event.target.value.slice(0, MESSAGE_MAX_LENGTH))}
+            onChange={(event) =>
+              setMessage(event.target.value.slice(0, MESSAGE_MAX_LENGTH))
+            }
           />
 
           <Box>
@@ -186,8 +221,13 @@ export function ContactSection() {
             >
               Email us
             </Button>
-            <Typography variant="caption" component="p" sx={{ color: "text.secondary", mt: 1 }}>
-              Opens your email app with your message filled in. Nothing is sent until you press send there.
+            <Typography
+              variant="caption"
+              component="p"
+              sx={{ color: "text.secondary", mt: 1 }}
+            >
+              Opens your email app with your message filled in. Nothing is sent
+              until you press send there.
             </Typography>
           </Box>
         </Stack>
@@ -195,4 +235,3 @@ export function ContactSection() {
     </Card>
   );
 }
-
