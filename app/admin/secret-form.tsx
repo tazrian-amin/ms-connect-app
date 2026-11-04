@@ -55,7 +55,7 @@ function PasswordField({ name, label, value, onChange }: PasswordFieldProps) {
                 onMouseDown={(event) => event.preventDefault()}
                 edge="end"
               >
-                {visible ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
+                {visible ? <VisibilityOutlinedIcon /> : <VisibilityOffOutlinedIcon />}
               </IconButton>
             </InputAdornment>
           ),
