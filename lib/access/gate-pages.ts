@@ -39,8 +39,9 @@ const BASE_STYLES = `
   .toggle:hover { color: var(--fg); }
   .toggle:focus-visible { outline: 2px solid var(--primary); }
   .toggle svg { width: 22px; height: 22px; fill: currentColor; }
-  .toggle .hide-icon, .toggle[aria-pressed="true"] .show-icon { display: none; }
-  .toggle[aria-pressed="true"] .hide-icon { display: block; }
+  /* The icon shows the field's current state: crossed-out eye while hidden, open eye while shown. */
+  .toggle .show-icon, .toggle[aria-pressed="true"] .hide-icon { display: none; }
+  .toggle[aria-pressed="true"] .show-icon { display: block; }
   .error { min-height: 1.25em; margin: 12px 0 0; color: var(--danger); font-size: .875rem; }
 `;
 
@@ -183,7 +184,7 @@ export function adminLoginPage(): string {
     "Admin sign in · MS Connect",
     `body { min-height: 100vh; display: grid; place-items: center; padding: 16px; }`,
     `<form class="dialog" novalidate>
-  <div class="brand"><img src="/icons/icon.svg" alt="">MS Connect admin</div>
+  <div class="brand"><img src="/icons/icon.svg" alt="">MS Connect Admin</div>
   <h1>Sign in</h1>
   <p>Manage the website access password.</p>
   <label for="username">Username</label>
