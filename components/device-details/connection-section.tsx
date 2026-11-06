@@ -25,7 +25,13 @@ import { useBluetoothSupport, useConnectionState, type BluetoothSupport } from "
 import type { StandardCharacteristic } from "@/lib/bluetooth/profile";
 import type { DemoSimulator } from "@/lib/bluetooth/demo";
 import { connectCloudDevice, disconnectCloudDevice } from "@/lib/cloud/remembered-links";
-import { deviceCloudSources, deviceDemos, deviceProfiles, getConnection } from "@/lib/connection/registry";
+import {
+  deviceCloudSources,
+  deviceDemos,
+  deviceProfiles,
+  getConnection,
+  type ConnectionInstance,
+} from "@/lib/connection/registry";
 import { noteDemoStarted, offerDemoFeedback } from "@/lib/demo-feedback";
 import { disableEditMode, enableEditMode, useEditMode, warnEditMode } from "@/lib/edit-mode";
 import { ConnectionStatusChip } from "@/components/connection/connection-status-chip";
@@ -43,6 +49,8 @@ type ConnectionSectionProps = {
   slug: string;
   /** The link to show, for a device type with several; otherwise the device's only one. */
   connection?: BluetoothConnection;
+  /** Which of several links `connection` is, for a device type with several (e.g. one asset tracker per asset). */
+  instance?: ConnectionInstance;
 };
 
 /**
@@ -50,7 +58,7 @@ type ConnectionSectionProps = {
  * A device that reports to the backend instead links through the cloud by its serial number.
  * For a device with a demo, also offers a simulated one to visitors who don't have the hardware.
  */
-export function ConnectionSection({ slug, connection }: ConnectionSectionProps) {
+export function ConnectionSection({ slug, connection, instance }: ConnectionSectionProps) {
   const profile = deviceProfiles[slug];
   const shown = connection ?? (profile && getConnection(profile));
   // Every device's profile includes the standard characteristics (see `deviceProfiles`).
@@ -60,6 +68,7 @@ export function ConnectionSection({ slug, connection }: ConnectionSectionProps) 
       connection={shown as BluetoothConnection<StandardCharacteristic>}
       createDemo={deviceDemos[slug]}
       viaCloud={deviceCloudSources[slug] !== undefined}
+      instance={instance}
     />
   ) : null;
 }
@@ -70,9 +79,10 @@ type ConnectionCardProps = {
   createDemo?: () => DemoSimulator;
   /** True for a device that links through the cloud rather than over Bluetooth. */
   viaCloud: boolean;
+  instance?: ConnectionInstance;
 };
 
-function ConnectionCard({ slug, connection, createDemo, viaCloud }: ConnectionCardProps) {
+function ConnectionCard({ slug, connection, createDemo, viaCloud, instance }: ConnectionCardProps) {
   const support = useBluetoothSupport();
   const { status, deviceName, demo, cloud } = useConnectionState(connection);
   const [askingSerial, setAskingSerial] = useState(false);
@@ -126,7 +136,7 @@ function ConnectionCard({ slug, connection, createDemo, viaCloud }: ConnectionCa
               startIcon={demo ? <ExitToAppIcon /> : viaCloud ? <CloudOffIcon /> : <BluetoothDisabledIcon />}
               onClick={() => {
                 if (editing) return warnEditMode("disconnect");
-                if (cloud) disconnectCloudDevice(slug);
+                if (cloud) disconnectCloudDevice(slug, instance);
                 else connection.disconnect();
                 if (demo) offerDemoFeedback(slug);
               }}
@@ -197,9 +207,10 @@ function ConnectionCard({ slug, connection, createDemo, viaCloud }: ConnectionCa
       {viaCloud && (
         <SerialNumberDialog
           slug={slug}
+          instanceId={instance?.id}
           open={askingSerial}
           onClose={() => setAskingSerial(false)}
-          onSubmit={(serialNumber) => connectCloudDevice(slug, serialNumber)}
+          onSubmit={(serialNumber) => connectCloudDevice(slug, serialNumber, instance)}
         />
       )}
     </DeviceSection>
@@ -208,16 +219,19 @@ function ConnectionCard({ slug, connection, createDemo, viaCloud }: ConnectionCa
 
 type SerialNumberDialogProps = {
   slug: string;
+  /** The link's instance, for a device type with several; each prefills its own last serial number. */
+  instanceId?: string;
   open: boolean;
   onClose: () => void;
   /** Links to the unit; rejects with a message for the user if it can't. */
   onSubmit: (serialNumber: string) => Promise<void>;
 };
 
-const serialStorageKey = (slug: string) => `ms-connect:serial-number:${slug}`;
+const serialStorageKey = (slug: string, instanceId?: string) =>
+  instanceId ? `ms-connect:serial-number:${slug}:${instanceId}` : `ms-connect:serial-number:${slug}`;
 
 /** Asks for the serial number of a device that links through the cloud, prefilled with the last one used. */
-function SerialNumberDialog({ slug, open, onClose, onSubmit }: SerialNumberDialogProps) {
+function SerialNumberDialog({ slug, instanceId, open, onClose, onSubmit }: SerialNumberDialogProps) {
   const [serialNumber, setSerialNumber] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -226,7 +240,7 @@ function SerialNumberDialog({ slug, open, onClose, onSubmit }: SerialNumberDialo
   if (wasOpen !== open) {
     setWasOpen(open);
     if (open) {
-      setSerialNumber(readStoredSerial(slug));
+      setSerialNumber(readStoredSerial(slug, instanceId));
       setProblem(null);
     }
   }
@@ -239,7 +253,7 @@ function SerialNumberDialog({ slug, open, onClose, onSubmit }: SerialNumberDialo
     setPending(true);
     try {
       await onSubmit(trimmed);
-      storeSerial(slug, trimmed);
+      storeSerial(slug, instanceId, trimmed);
       onClose();
     } catch (cause) {
       setProblem(cause instanceof Error ? cause.message : "Couldn't connect to the device.");
@@ -287,17 +301,17 @@ function SerialNumberDialog({ slug, open, onClose, onSubmit }: SerialNumberDialo
   );
 }
 
-function readStoredSerial(slug: string): string {
+function readStoredSerial(slug: string, instanceId: string | undefined): string {
   try {
-    return window.localStorage.getItem(serialStorageKey(slug)) ?? "";
+    return window.localStorage.getItem(serialStorageKey(slug, instanceId)) ?? "";
   } catch {
     return "";
   }
 }
 
-function storeSerial(slug: string, serialNumber: string) {
+function storeSerial(slug: string, instanceId: string | undefined, serialNumber: string) {
   try {
-    window.localStorage.setItem(serialStorageKey(slug), serialNumber);
+    window.localStorage.setItem(serialStorageKey(slug, instanceId), serialNumber);
   } catch {
     // Storage blocked; the user types it again next time.
   }

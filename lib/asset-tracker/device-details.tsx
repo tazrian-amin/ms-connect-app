@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ChipProps } from "@mui/material/Chip";
+import AddIcon from "@mui/icons-material/Add";
 import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { ActionButton, SettingForm } from "@/components/device-details/command-controls";
 import { ControlSection } from "@/components/device-details/control-section";
@@ -15,7 +19,12 @@ import { DeviceSection } from "@/components/device-details/device-section";
 import { assetTrackerCommands } from "@/lib/bluetooth/commands/asset-tracker";
 import { useConnectionState, useDeviceState } from "@/lib/bluetooth/hooks";
 import { getMessenger } from "@/lib/bluetooth/messaging";
+import { AddAssetDialog } from "./asset-dialogs";
+import { AssetTabs } from "./asset-tabs";
+import { addAsset, moveAsset, removeAsset, renameAsset, useAssets, type Asset, type NewAsset } from "./assets";
 import { assetTrackerProfile } from "./bluetooth-profile";
+
+const SLUG = "asset-tracker";
 
 type Status = { text: string; color: ChipProps["color"] };
 
@@ -30,9 +39,96 @@ const trackingModeStatus: Record<"active" | "inactive", Status> = {
 const chargingStatus = (charging: boolean): Status =>
   charging ? { text: "Charging", color: "info" } : { text: "Not charging", color: "default" };
 
-// No telemetry section: the map below the dashboard takes its place.
 export function AssetTrackerDetails() {
-  const messenger = getMessenger(assetTrackerProfile, assetTrackerCommands);
+  const assets = useAssets();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Falls back to the first asset before one is picked, or after the picked one is removed.
+  const selected = assets?.find((asset) => asset.id === selectedId) ?? assets?.[0];
+
+  const handleAdd = (newAsset: NewAsset) => setSelectedId(addAsset(newAsset).id);
+
+  // Nothing until the saved assets are read, then a prompt to add the first one if there are none.
+  if (!assets) return null;
+  if (!selected) return <NoAssets onAdd={handleAdd} />;
+
+  const handleRemove = (id: string) => {
+    const index = assets.findIndex((asset) => asset.id === id);
+    const neighbour = assets[index + 1] ?? assets[index - 1];
+    removeAsset(id);
+    if (neighbour) setSelectedId(neighbour.id);
+  };
+
+  return (
+    <>
+      <AssetTabs
+        assets={assets}
+        selectedId={selected.id}
+        onSelect={setSelectedId}
+        onAdd={handleAdd}
+        onRename={renameAsset}
+        onRemove={handleRemove}
+        onMove={moveAsset}
+      />
+      <Box
+        role="tabpanel"
+        id={`asset-panel-${selected.id}`}
+        aria-labelledby={`asset-tab-${selected.id}`}
+        sx={{ pt: 3 }}
+      >
+        {/* Keyed so switching assets starts the panel afresh, e.g. half-typed settings. */}
+        <AssetDetails key={selected.id} asset={selected} />
+      </Box>
+    </>
+  );
+}
+
+/** Shown before any asset is added: a button in the middle of the page to add the first one. */
+function NoAssets({ onAdd }: { onAdd: (asset: NewAsset) => void }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        borderRadius: 2,
+        borderStyle: "dashed",
+        py: { xs: 6, sm: 10 },
+        px: 2,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        textAlign: "center",
+        gap: 2,
+      }}
+    >
+      <Stack spacing={0.5}>
+        <Typography variant="h6" component="h2">
+          No assets yet
+        </Typography>
+        <Typography sx={{ color: "text.secondary" }}>
+          Add an asset, then connect its tracker by serial number to see where it is and how it&apos;s doing.
+        </Typography>
+      </Stack>
+      <Button variant="contained" size="large" disableElevation startIcon={<AddIcon />} onClick={() => setAdding(true)}>
+        Add a new asset
+      </Button>
+      <AddAssetDialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        onAdd={(asset) => {
+          setAdding(false);
+          onAdd(asset);
+        }}
+      />
+    </Paper>
+  );
+}
+
+/**
+ * Connection, settings, readings and location of one asset, over its own tracker's cloud link.
+ * No telemetry section: the map below the dashboard takes its place.
+ */
+function AssetDetails({ asset }: { asset: Asset }) {
+  const messenger = getMessenger(assetTrackerProfile, assetTrackerCommands, asset);
   const { data, updatedAt } = useDeviceState(messenger);
   const { status } = useConnectionState(messenger.connection);
   const connected = status === "connected";
@@ -44,7 +140,9 @@ export function AssetTrackerDetails() {
 
   return (
     <DeviceDetailsLayout
-      slug="asset-tracker"
+      slug={SLUG}
+      connection={messenger.connection}
+      instance={asset}
       controls={
         <ControlSection>
           {/* One column on phones, two on tablets (sm–lg), all four in a row on desktop. */}
