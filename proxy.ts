@@ -1,13 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminLoginPage, LOCK_PAGE_PATH, lockPage } from "@/lib/access/gate-pages";
-import {
-  ADMIN_COOKIE,
-  readAdmin,
-  readSession,
-  readViewMode,
-  SESSION_COOKIE,
-  VIEW_COOKIE,
-} from "@/lib/access/session";
+import { ADMIN_COOKIE, readAdmin, readSession, SESSION_COOKIE } from "@/lib/access/session";
 import { getAccessSettings } from "@/lib/access/settings-store";
 
 /*
@@ -16,7 +9,6 @@ import { getAccessSettings } from "@/lib/access/settings-store";
  * - Without a site session, page loads get the password dialog (lockPage) at the URL they opened,
  *   and everything else (route data, scripts, styles) is refused. So none of the app's code
  *   reaches a visitor who has not signed in.
- * - Device pages also need view mode, or they redirect to the home page.
  * - /admin has its own sign-in (the admin credentials) and skips the site password, so the
  *   password can be set before anyone knows it.
  *
@@ -76,10 +68,6 @@ export async function proxy(request: NextRequest) {
   // The admin page needs the app's scripts and styles too.
   if (!session && !(isAdmin && pathname.startsWith("/_next/"))) {
     return isPageLoad(request) ? html(lockPage(), 401) : new Response("Unauthorized", { status: 401, headers: NO_STORE });
-  }
-
-  if (pathname.startsWith("/devices/") && !readViewMode(settings, session, request.cookies.get(VIEW_COOKIE)?.value)) {
-    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();

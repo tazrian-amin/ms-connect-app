@@ -3,17 +3,14 @@ import { fingerprint, randomId, safeEqual, signToken, verifyToken } from "./cryp
 import type { AccessSettings } from "./settings-store";
 
 /*
- * Three signed, HttpOnly cookies:
+ * Two signed, HttpOnly cookies:
  *
  * - Site session: issued for the site password, lasts SESSION_DAYS. Carries the password's
  *   version, so changing the password invalidates every session.
- * - View mode: issued for the device view code. Bound to one session (same id and expiry), so
- *   it ends with it, and carries the code's version, so changing the code turns it off for all.
  * - Admin: issued for the admin credentials from the environment.
  */
 
 export const SESSION_COOKIE = "ms_session";
-export const VIEW_COOKIE = "ms_view";
 export const ADMIN_COOKIE = "ms_admin";
 
 export const SESSION_DAYS = 3;
@@ -23,18 +20,16 @@ const ADMIN_MS = 12 * 60 * 60 * 1000;
 export type Session = { sid: string; exp: number };
 
 type SessionToken = Session & { t: "s"; pv: string };
-type ViewToken = Session & { t: "v"; cv: string };
 type AdminToken = { t: "a"; exp: number; ac: string };
 
 /** What the browser and the service worker learn about the visitor's access. */
 export type AccessState = {
   authenticated: boolean;
-  /** Epoch ms at which the session (and view mode) end. */
+  /** Epoch ms at which the session ends. */
   expiresAt: number | null;
-  viewMode: boolean;
 };
 
-export const signedOut: AccessState = { authenticated: false, expiresAt: null, viewMode: false };
+export const signedOut: AccessState = { authenticated: false, expiresAt: null };
 
 export function issueSession(settings: AccessSettings): { token: string; session: Session } {
   const session = { sid: randomId(), exp: Date.now() + SESSION_MS };
@@ -49,24 +44,8 @@ export function readSession(settings: AccessSettings, token: string | undefined)
   return { sid: payload.sid, exp: payload.exp };
 }
 
-export function issueViewMode(settings: AccessSettings, session: Session): string {
-  return signToken({ t: "v", ...session, cv: settings.viewCode!.version } satisfies ViewToken, settings.signingKey);
-}
-
-export function readViewMode(settings: AccessSettings, session: Session | null, token: string | undefined): boolean {
-  if (!session || !settings.viewCode) return false;
-  const payload = verifyToken<ViewToken>(token, settings.signingKey);
-  return Boolean(
-    payload &&
-      payload.t === "v" &&
-      payload.sid === session.sid &&
-      payload.exp > Date.now() &&
-      payload.cv === settings.viewCode.version,
-  );
-}
-
-export function accessState(session: Session | null, viewMode: boolean): AccessState {
-  return session ? { authenticated: true, expiresAt: session.exp, viewMode } : signedOut;
+export function accessState(session: Session | null): AccessState {
+  return session ? { authenticated: true, expiresAt: session.exp } : signedOut;
 }
 
 function adminCredentials(): { username: string; password: string } | null {

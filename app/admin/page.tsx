@@ -46,16 +46,9 @@ export default async function AdminPage() {
 
       <Stack spacing={3}>
         <SecretForm
-          kind="password"
           title="Website access password"
           description={`Everyone needs this to open the site. A sign-in lasts ${SESSION_DAYS} days. Changing it signs everyone out.`}
           status={lastChanged(settings.sitePassword?.updatedAt)}
-        />
-        <SecretForm
-          kind="code"
-          title="Device view code"
-          description="A 6-digit code that shows device names and opens device pages, until the visitor's session ends. Changing it turns view mode off for everyone."
-          status={lastChanged(settings.viewCode?.updatedAt)}
         />
       </Stack>
     </Container>

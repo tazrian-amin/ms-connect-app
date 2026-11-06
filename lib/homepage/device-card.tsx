@@ -19,16 +19,15 @@ import type { Device } from "./devices";
 
 type DeviceCardProps = {
   device: Device;
-  /** Whether view mode is on. Off, the name and description are hidden and the card does not open. */
+  /** Whether this card's name and description show. Off, they are blurred and the card does not open. */
   revealed: boolean;
-  /** The eye button and, while hidden, the card itself: asks for the view code, or turns view mode off. */
+  /** The eye button and, while hidden, the card itself: shows or hides this card's details. */
   onToggleView: () => void;
 };
 
-// Shown blurred in place of the real text while view mode is off. The real text is never
-// rendered then, so it cannot be read from the page either.
+// Shown blurred in place of the real text while the card is hidden.
 const HIDDEN_NAME = "Device name hidden";
-const HIDDEN_DESCRIPTION = "Enter the view code to see this device and its description.";
+const HIDDEN_DESCRIPTION = "Use the eye button to see this device and its description.";
 
 const hiddenText = { filter: "blur(5px)", userSelect: "none" } as const;
 
@@ -51,7 +50,7 @@ export function DeviceCard({ device, revealed, onToggleView }: DeviceCardProps) 
       <CardActionArea
         {...(revealed
           ? { component: Link, href: `/devices/${device.slug}` }
-          : { onClick: onToggleView, "aria-label": "Hidden device. Enter the view code to open it." })}
+          : { onClick: onToggleView, "aria-label": "Hidden device. Show its details." })}
         sx={{
           height: "100%",
           display: "flex",

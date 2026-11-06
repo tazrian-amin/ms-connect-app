@@ -5,7 +5,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { deviceDetails } from "@/components/device-details/registry";
 import { BackButton } from "@/components/ui/back-button";
-import { ViewModeGuard } from "@/components/view-mode-guard";
 import { DeviceIconTile } from "@/lib/homepage/device-icon-tile";
 import { devices, getDevice } from "@/lib/homepage/devices";
 
@@ -28,9 +27,7 @@ export default async function DevicePage(props: PageProps<"/devices/[slug]">) {
   if (!device) notFound();
   const Details = deviceDetails[slug];
 
-  // Device details need view mode (see components/view-mode-guard.tsx).
   return (
-    <ViewModeGuard>
       <Container component="main" maxWidth="xl" sx={{ py: { xs: 3, sm: 4 } }}>
         <BackButton href="/">All devices</BackButton>
 
@@ -56,6 +53,5 @@ export default async function DevicePage(props: PageProps<"/devices/[slug]">) {
 
         <Details />
       </Container>
-    </ViewModeGuard>
   );
 }

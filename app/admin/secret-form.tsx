@@ -12,10 +12,9 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import { setSitePassword, setViewCode, type FormState } from "./actions";
+import { setSitePassword, type FormState } from "./actions";
 
 type SecretFormProps = {
-  kind: "password" | "code";
   title: string;
   description: string;
   status: string;
@@ -65,23 +64,21 @@ function PasswordField({ name, label, value, onChange }: PasswordFieldProps) {
   );
 }
 
-export function SecretForm({ kind, title, description, status }: SecretFormProps) {
+export function SecretForm({ title, description, status }: SecretFormProps) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [code, setCode] = useState("");
 
   const [state, action, pending] = useActionState<FormState, FormData>(async (previous, formData) => {
-    const result = await (kind === "password" ? setSitePassword : setViewCode)(previous, formData);
+    const result = await setSitePassword(previous, formData);
     // Clear the fields once saved, so the new value is not left on screen.
     if (result.ok) {
       setPassword("");
       setConfirm("");
-      setCode("");
     }
     return result;
   }, {});
 
-  const filled = kind === "password" ? password !== "" && confirm !== "" : code.length === 6;
+  const filled = password !== "" && confirm !== "";
 
   // Submitted by hand rather than through the form's `action`, which would reset the fields
   // even when saving fails.
@@ -106,23 +103,8 @@ export function SecretForm({ kind, title, description, status }: SecretFormProps
         </Typography>
 
         <Stack spacing={2} sx={{ mt: 2.5 }}>
-          {kind === "password" ? (
-            <>
-              <PasswordField name="password" label="New password" value={password} onChange={setPassword} />
-              <PasswordField name="confirm" label="Confirm new password" value={confirm} onChange={setConfirm} />
-            </>
-          ) : (
-            <TextField
-              name="code"
-              label="New 6-digit code"
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-              autoComplete="off"
-              required
-              fullWidth
-              slotProps={{ htmlInput: { inputMode: "numeric", maxLength: 6 } }}
-            />
-          )}
+          <PasswordField name="password" label="New password" value={password} onChange={setPassword} />
+          <PasswordField name="confirm" label="Confirm new password" value={confirm} onChange={setConfirm} />
 
           {state.error && <Alert severity="error">{state.error}</Alert>}
           {state.ok && <Alert severity="success">{state.ok}</Alert>}
@@ -134,7 +116,7 @@ export function SecretForm({ kind, title, description, status }: SecretFormProps
             disabled={!filled || pending}
             sx={{ alignSelf: "flex-start" }}
           >
-            {pending ? "Saving…" : kind === "password" ? "Change password" : "Change code"}
+            {pending ? "Saving…" : "Change password"}
           </Button>
         </Stack>
       </CardContent>

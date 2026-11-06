@@ -22,15 +22,15 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Access control
 
-The whole site sits behind a shared password, and device details behind a 6-digit view code. Both are set at `/admin`.
+The whole site sits behind a shared password, set at `/admin`.
 
 - **Admin sign-in** uses `ADMIN_USERNAME` and `ADMIN_PASSWORD` from the environment.
-- **The site password and view code** are stored as hashes, along with the key that signs session cookies:
+- **The site password** is stored as a hash, along with the key that signs session cookies:
   - **Local / self-hosted `next start`:** in `.data/access-settings.json` (gitignored). No setup needed.
   - **Vercel:** in Upstash Redis. In the Vercel project, open Storage → Marketplace → Upstash Redis and connect it. That sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`. Then redeploy.
 - Until the admin sets a password, nobody can open the site.
 
-How it works: `proxy.ts` gates every request, including the JS bundles. `app/api/session` signs visitors in. `public/sw.js` enforces the 3-day session and view mode offline.
+How it works: `proxy.ts` gates every request, including the JS bundles. `app/api/session` signs visitors in. `public/sw.js` enforces the 3-day session offline.
 
 ## Learn More
 

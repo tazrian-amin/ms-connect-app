@@ -15,7 +15,6 @@ import MailOutlineIcon from "@mui/icons-material/MailOutlined";
 import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
 import { contactEmailHref, openContactEmail } from "@/lib/contact";
 import { devices } from "./devices";
-import { useViewMode } from "../access/session-client";
 
 const MESSAGE_MAX_LENGTH = 2_000;
 const FIELD_MAX_LENGTH = 100;
@@ -36,7 +35,6 @@ type TopicId = (typeof topics)[number]["id"];
  * email app with the message filled in (see lib/contact.ts).
  */
 export function ContactSection() {
-  const viewMode = useViewMode();
   const [topic, setTopic] = useState<TopicId>("learn");
   const [interested, setInterested] = useState<string[]>([]);
   const [name, setName] = useState("");
@@ -128,7 +126,6 @@ export function ContactSection() {
               ))}
             </TextField>
             <TextField
-              disabled={!viewMode}
               select
               label="Devices (optional)"
               value={interested}

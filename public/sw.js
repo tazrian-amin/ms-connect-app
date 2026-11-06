@@ -3,12 +3,12 @@
 // cache. Only Bluetooth is needed once installed.
 //
 // The site is behind a password (proxy.ts), so the worker also enforces access offline:
-// - It sits in front of /api/session and remembers the last answer (signed in until when, and
-//   whether view mode is on) in a cache that outlives builds. Offline, it answers from that.
+// - It sits in front of /api/session and remembers the last answer (signed in until when) in a
+//   cache that outlives builds. Offline, it answers from that.
 // - Pages are served from the cache only while that session lasts; after it, the password
-//   dialog is shown instead, and the cached app is deleted. Device pages also need view mode.
+//   dialog is shown instead, and the cached app is deleted.
 // - The app is cached only once signed in, and only the pages the server says are open to the
-//   visitor; device pages are added when view mode turns on and removed when it turns off.
+//   visitor.
 //
 // /sw-precache.js (app/sw-precache.js/route.ts) holds a per-build version. A new build changes
 // that file, which makes the browser install this worker again with a fresh cache. The new
@@ -28,7 +28,6 @@ const ACCESS_KEY = "/__access";
 
 const OFFLINE_URL = "/offline.html";
 const LOCK_URL = "/locked";
-const DEVICE_PREFIX = "/devices/";
 const SHELL_URLS = [
   OFFLINE_URL,
   LOCK_URL,
@@ -45,7 +44,7 @@ const SHELL_URLS = [
 const SESSION_TIMEOUT_MS = 4_000;
 const NAVIGATION_TIMEOUT_MS = 10_000;
 
-const SIGNED_OUT = { authenticated: false, expiresAt: null, viewMode: false, pages: [] };
+const SIGNED_OUT = { authenticated: false, expiresAt: null, pages: [] };
 
 // Same-origin build assets referenced from HTML (attributes and inline RSC payload) or CSS.
 const ASSET_URL_PATTERN = /\/(?:_next\/static\/|favicon\.ico)[^"'\s()\\]*/g;
@@ -137,17 +136,15 @@ async function writeAccess(access, { recache = true } = {}) {
   if (!access.authenticated) {
     // Nothing of the app is left on the device for the next person to find.
     await caches.delete(APP_CACHE);
-  } else if (previous.viewMode && !access.viewMode) {
-    await forgetDevicePages();
   }
-  if (recache && access.authenticated && (!previous.authenticated || (access.viewMode && !previous.viewMode))) {
+  if (recache && access.authenticated && !previous.authenticated) {
     scheduleCaching();
   }
 }
 
 /**
  * Learns the visitor's access from an /api/session response. Returns null when the response
- * says nothing about it (a wrong view code, too many attempts).
+ * says nothing about it (too many attempts).
  */
 async function recordAccess(response, options) {
   let access;
@@ -155,7 +152,7 @@ async function recordAccess(response, options) {
     try {
       const body = await response.clone().json();
       access = body.authenticated
-        ? { authenticated: true, expiresAt: body.expiresAt, viewMode: Boolean(body.viewMode), pages: body.pages ?? ["/"] }
+        ? { authenticated: true, expiresAt: body.expiresAt, pages: body.pages ?? ["/"] }
         : SIGNED_OUT;
     } catch {
       return null;
@@ -194,13 +191,6 @@ async function handleSessionApi(url, request) {
     if (request.method === "GET" && url.pathname === "/api/session") {
       const access = await currentAccess();
       return Response.json({ ...access, offline: true }, { status: isValid(access) ? 200 : 401 });
-    }
-    if (request.method === "DELETE" && url.pathname === "/api/session/view") {
-      // Turning view mode off needs no check, so it applies offline too, on this device.
-      const access = await currentAccess();
-      const next = isValid(access) ? { ...access, viewMode: false, pages: ["/"] } : SIGNED_OUT;
-      await writeAccess(next);
-      return Response.json(next, { status: isValid(next) ? 200 : 401 });
     }
     return Response.json({ error: "You're offline. Connect to the internet and try again." }, { status: 503 });
   }
@@ -253,15 +243,6 @@ async function cacheAppPages() {
   );
 }
 
-async function forgetDevicePages() {
-  if (!(await caches.has(APP_CACHE))) return;
-  const cache = await caches.open(APP_CACHE);
-  const keys = await cache.keys();
-  await Promise.all(
-    keys.filter((key) => new URL(key.url).pathname.startsWith(DEVICE_PREFIX)).map((key) => cache.delete(key))
-  );
-}
-
 function joinRscPayload(html) {
   let payload = "";
   for (const match of html.matchAll(RSC_PIECE_PATTERN)) {
@@ -293,10 +274,6 @@ async function handleNavigation(url, request) {
     } catch {
       return (await caches.match(LOCK_URL)) ?? (await caches.match(OFFLINE_URL)) ?? Response.error();
     }
-  }
-
-  if (url.pathname.startsWith(DEVICE_PREFIX) && !access.viewMode) {
-    return Response.redirect(new URL("/", self.location.origin).href, 302);
   }
 
   const cached = await matchIn(APP_CACHE, url.pathname);
@@ -341,8 +318,7 @@ function prefetchCacheKey(url, request) {
 // route data always matches the cached pages and scripts.
 async function handlePrefetch(url, request) {
   const access = await currentAccess();
-  const allowed = isValid(access) && (access.viewMode || !url.pathname.startsWith(DEVICE_PREFIX));
-  if (!allowed) return fetch(request);
+  if (!isValid(access)) return fetch(request);
 
   const key = prefetchCacheKey(url, request);
   const cached = await matchIn(APP_CACHE, key, { ignoreVary: true });

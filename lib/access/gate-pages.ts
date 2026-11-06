@@ -185,7 +185,7 @@ export function adminLoginPage(): string {
     `<form class="dialog" novalidate>
   <div class="brand"><img src="/icons/icon.svg" alt="">MS Connect admin</div>
   <h1>Sign in</h1>
-  <p>Manage the website access password and the device view code.</p>
+  <p>Manage the website access password.</p>
   <label for="username">Username</label>
   <input id="username" name="username" autocomplete="username" required autofocus>
   <label for="password">Password</label>

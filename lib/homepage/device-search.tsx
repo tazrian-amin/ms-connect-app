@@ -7,19 +7,16 @@ import SearchIcon from "@mui/icons-material/Search";
 type DeviceSearchProps = {
   value: string;
   onChange: (value: string) => void;
-  /** Off until view mode is on: matching results would reveal the hidden names. */
-  disabled?: boolean;
 };
 
-export function DeviceSearch({ value, onChange, disabled = false }: DeviceSearchProps) {
+export function DeviceSearch({ value, onChange }: DeviceSearchProps) {
   return (
     <TextField
       fullWidth
-      disabled={disabled}
       type="search"
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      placeholder={disabled ? "Enter the view code to search devices" : "Search devices by name or description..."}
+      placeholder="Search devices by name or description..."
       slotProps={{
         input: {
           startAdornment: (

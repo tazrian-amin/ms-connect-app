@@ -1,15 +1,15 @@
 import { cookies, headers } from "next/headers";
 import { accessResponse, accessState, currentAccess, errorResponse, getAccessSettings, readJson } from "@/lib/access/api";
 import { verifySecret } from "@/lib/access/crypto";
-import { clientIp, cookieOptions, issueSession, SESSION_COOKIE, signedOut, VIEW_COOKIE } from "@/lib/access/session";
+import { clientIp, cookieOptions, issueSession, SESSION_COOKIE, signedOut } from "@/lib/access/session";
 import { takeAttempt } from "@/lib/access/settings-store";
 
 // Site sessions. Reached without signing in (see proxy.ts), so every handler checks for itself.
 
 /** The visitor's current access. 401 without a session. */
 export async function GET() {
-  const { session, viewMode } = await currentAccess(await getAccessSettings());
-  return accessResponse(accessState(session, viewMode));
+  const { session } = await currentAccess(await getAccessSettings());
+  return accessResponse(accessState(session));
 }
 
 /** Signs in with the site password: `{ password }`. */
@@ -30,17 +30,12 @@ export async function POST(request: Request) {
   }
 
   const { token, session } = issueSession(settings);
-  const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, { ...cookieOptions, expires: session.exp });
-  // A new session starts with view mode off.
-  jar.delete(VIEW_COOKIE);
-  return accessResponse(accessState(session, false));
+  (await cookies()).set(SESSION_COOKIE, token, { ...cookieOptions, expires: session.exp });
+  return accessResponse(accessState(session));
 }
 
 /** Signs out. */
 export async function DELETE() {
-  const jar = await cookies();
-  jar.delete(SESSION_COOKIE);
-  jar.delete(VIEW_COOKIE);
+  (await cookies()).delete(SESSION_COOKIE);
   return accessResponse(signedOut);
 }

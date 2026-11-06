@@ -22,7 +22,7 @@ async function isAdmin(): Promise<boolean> {
   return readAdmin(settings, (await cookies()).get(ADMIN_COOKIE)?.value);
 }
 
-async function saveSecret(field: "sitePassword" | "viewCode", value: string, done: string): Promise<FormState> {
+async function saveSecret(field: "sitePassword", value: string, done: string): Promise<FormState> {
   const stored = { hash: await hashSecret(value), version: randomId(), updatedAt: Date.now() };
   try {
     await updateAccessSettings((settings): AccessSettings => ({ ...settings, [field]: stored }));
@@ -46,15 +46,6 @@ export async function setSitePassword(_previous: FormState, formData: FormData):
   if (password !== confirm) return { error: "The two passwords don't match." };
 
   return saveSecret("sitePassword", password, "Password changed. Everyone has been signed out.");
-}
-
-export async function setViewCode(_previous: FormState, formData: FormData): Promise<FormState> {
-  if (!(await isAdmin())) return { error: "Your admin session has ended. Reload the page and sign in again." };
-
-  const code = String(formData.get("code") ?? "");
-  if (!/^\d{6}$/.test(code)) return { error: "The code must be exactly 6 digits." };
-
-  return saveSecret("viewCode", code, "View code changed. View mode is now off for everyone.");
 }
 
 export async function signOutAdmin(): Promise<void> {

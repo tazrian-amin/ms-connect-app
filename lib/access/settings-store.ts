@@ -4,8 +4,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 /*
- * Stores the two secrets the admin can change (the site password and the device view code),
- * plus the key that signs session cookies. There is no database, so this is either:
+ * Stores the secret the admin can change (the site password), plus the key that signs session cookies. There is no database, so this is either:
  *
  * - Upstash Redis over its REST API, when KV_REST_API_URL / KV_REST_API_TOKEN (set by the Vercel
  *   Marketplace integration) or UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are present.
@@ -13,7 +12,7 @@ import { join } from "node:path";
  * - Otherwise a JSON file in .data/ (gitignored). Fine for local development and for a single
  *   self-hosted `next start` server.
  *
- * Only hashes of the password and code are stored, never the values themselves.
+ * Only a hash of the password is stored, never the values themselves.
  */
 
 export type StoredSecret = {
@@ -25,10 +24,9 @@ export type StoredSecret = {
 };
 
 export type AccessSettings = {
-  /** HMAC key for session, view and admin cookies. Generated on first use. */
+  /** HMAC key for session and admin cookies. Generated on first use. */
   signingKey: string;
   sitePassword?: StoredSecret;
-  viewCode?: StoredSecret;
 };
 
 const KEY = "ms-connect:access-settings";
