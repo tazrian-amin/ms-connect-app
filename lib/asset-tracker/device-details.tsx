@@ -47,14 +47,12 @@ export function AssetTrackerDetails() {
       slug="asset-tracker"
       controls={
         <ControlSection>
-          {/* Stacked below 512px wide, side by side from there up. */}
+          {/* One column on phones, two on tablets (sm–lg), all four in a row on desktop. */}
           <Box
             sx={{
-              display: "flex",
-              flexDirection: "column",
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
               gap: 2,
-              "@media (min-width: 512px)": { flexDirection: "row" },
-              "& > *": { flex: 1, minWidth: 0 },
             }}
           >
             <SettingForm
