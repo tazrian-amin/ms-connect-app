@@ -1,4 +1,5 @@
 import type { CloudMessage, CloudSource } from "@/lib/cloud/cloud";
+import type { TimedLatLng } from "./location";
 
 /*
  * The asset tracker reports over its own network (GPS + cellular) to the backend rather than over
@@ -11,11 +12,19 @@ import type { CloudMessage, CloudSource } from "@/lib/cloud/cloud";
  *   POST /trackers/{serial}/commands   one command, body as over Bluetooth, e.g. {"cmd":"get_config"}
  *                                      or {"set_moving_interval_s":"60"}; replies with the fields it
  *                                      affects, or a rejection as {"error":"...","cmd":"..."} in `data`
+ *   GET  /trackers/{serial}/history?from={ms}&to={ms}
+ *                                      every report with a location recorded in that period (epoch
+ *                                      ms, inclusive), as a JSON array of envelopes in any order
  *
- * Both answer 200 with the Bluetooth message envelope, so the backend can store what the tracker
- * sends as is (fields in lib/bluetooth/commands/asset-tracker.ts):
+ * All answer 200 with the Bluetooth message envelope (history: an array of them), so the backend
+ * can store what the tracker sends as is (fields in lib/bluetooth/commands/asset-tracker.ts):
  *
  *   {"deviceId":"AT-000123","timestamp":1759400000000,"data":{"latitude":23.81,"longitude":90.41,...}}
+ *
+ * For history, `timestamp` must be when the tracker recorded the location (the Notecard event's
+ * time), not when the backend received it: reports can arrive late and in batches. Each report
+ * should carry `is_moving`: the tracker reports as soon as its accelerometer says it started or
+ * stopped moving, and the app splits the route into stops and trips at those reports.
  *
  * 404 means no tracker has that serial number. Any other failure may carry {"error":"<why>"}.
  */
@@ -40,11 +49,52 @@ export function createAssetTrackerCloudSource(serialNumber: string): CloudSource
   };
 }
 
+/**
+ * Locations the tracker recorded between `from` and `to` (epoch ms), oldest first. Rejects with an
+ * `Error` whose message is fit to show the user.
+ */
+export async function fetchAssetTrackerHistory(
+  serialNumber: string,
+  from: number,
+  to: number,
+  signal: AbortSignal,
+): Promise<TimedLatLng[]> {
+  const path = `/trackers/${encodeURIComponent(serialNumber)}/history?from=${from}&to=${to}`;
+  const body = await requestJson(path, { signal }, serialNumber);
+  if (!Array.isArray(body)) throw new Error("The cloud service sent something the app doesn't understand.");
+  const points: TimedLatLng[] = [];
+  for (const entry of body) {
+    if (!isRecord(entry) || !isRecord(entry.data)) continue;
+    const { latitude, longitude, is_moving } = entry.data;
+    const time = Number(entry.timestamp);
+    if (typeof latitude === "number" && typeof longitude === "number" && Number.isFinite(time)) {
+      points.push(
+        typeof is_moving === "boolean"
+          ? { latitude, longitude, time, moving: is_moving }
+          : { latitude, longitude, time },
+      );
+    }
+  }
+  return points.sort((a, b) => a.time - b.time);
+}
+
 async function request(path: string, init: RequestInit, serialNumber: string): Promise<CloudMessage> {
+  const body = await requestJson(path, init, serialNumber);
+  if (!isRecord(body) || typeof body.deviceId !== "string" || !isRecord(body.data)) {
+    throw new Error("The cloud service sent something the app doesn't understand.");
+  }
+  return { deviceId: body.deviceId, timestamp: Number(body.timestamp) || 0, data: body.data };
+}
+
+/** The JSON body of a successful response, or an `Error` whose message is fit to show the user. */
+async function requestJson(path: string, init: RequestInit, serialNumber: string): Promise<unknown> {
   if (!API_URL) throw new Error("The cloud service isn't set up in this version of the app.");
   let response: Response;
   try {
-    response = await fetch(`${API_URL.replace(/\/+$/, "")}${path}`, { ...init, cache: "no-store" });
+    response = await fetch(`${API_URL.replace(/\/+$/, "")}${path}`, {
+      ...init,
+      cache: "no-store",
+    });
   } catch (error) {
     if (init.signal?.aborted) throw error;
     throw new Error("Couldn't reach the cloud service. Check your internet connection and try again.");
@@ -55,10 +105,7 @@ async function request(path: string, init: RequestInit, serialNumber: string): P
     const reason = isRecord(body) && typeof body.error === "string" ? body.error : `error ${response.status}`;
     throw new Error(`The cloud service couldn't answer (${reason}).`);
   }
-  if (!isRecord(body) || typeof body.deviceId !== "string" || !isRecord(body.data)) {
-    throw new Error("The cloud service sent something the app doesn't understand.");
-  }
-  return { deviceId: body.deviceId, timestamp: Number(body.timestamp) || 0, data: body.data };
+  return body;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

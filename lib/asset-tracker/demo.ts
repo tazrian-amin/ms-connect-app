@@ -8,6 +8,9 @@ const STATIONARY_TICKS = 180;
 /** Degrees per tick while driving: about 40 km/h. */
 const STEP = 0.0002;
 
+/** Where the demo truck is based: 321 Eagle Ct, Ossian, Indiana. Its history starts here too. */
+export const DEMO_HOME = { latitude: 40.869072, longitude: -85.163016 };
+
 const DEFAULT_CONFIG = {
   stationary_interval_s: 1800,
   moving_interval_s: 60,
@@ -15,12 +18,11 @@ const DEFAULT_CONFIG = {
 };
 
 /**
- * A truck that drives around Dhaka for a couple of minutes, then parks long enough for tracking to
- * go inactive, while its battery slowly drains.
+ * A truck that starts at its home (DEMO_HOME) and drives around for a couple of minutes, then
+ * parks long enough for tracking to go inactive, while its battery slowly drains.
  */
 export function createAssetTrackerDemo(): DemoSimulator<typeof assetTrackerCommands> {
-  let latitude = 23.8103;
-  let longitude = 90.4125;
+  let { latitude, longitude } = DEMO_HOME;
   let heading = Math.random() * 2 * Math.PI;
   let battery = 85;
   let deviceName = "Truck 12";
