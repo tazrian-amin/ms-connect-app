@@ -42,3 +42,11 @@ next-env.d.ts
 
 # access settings when no Redis is configured (lib/access/settings-store.ts)
 /.data/
+
+# playwright
+/e2e/.data/
+/e2e/.auth/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
