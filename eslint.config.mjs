@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     // Playwright output.
     "playwright-report/**",
     "test-results/**",
+    // Vitest coverage report (npm run test:coverage).
+    "coverage/**",
   ]),
 ]);
 

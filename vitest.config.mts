@@ -18,5 +18,14 @@ export default defineConfig({
     setupFiles: ["test/setup.ts"],
     restoreMocks: true,
     unstubEnvs: true,
+    // `npm run test:coverage`. Counts the logic in lib/*.ts; components (.tsx) are covered by e2e/.
+    coverage: {
+      provider: "v8",
+      include: ["lib/**/*.ts"],
+      exclude: ["lib/**/*.test.ts", "lib/**/*.d.ts"],
+      reporter: ["text-summary", "html"],
+      // A floor just under the current coverage, so it can only go up. Raise it as tests are added.
+      thresholds: { statements: 44, branches: 40, functions: 40, lines: 44 },
+    },
   },
 });

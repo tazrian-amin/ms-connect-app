@@ -1,0 +1,20 @@
+# Weekly pull requests for outdated or vulnerable dependencies. Each one runs CI before review.
+# Security fixes are opened as soon as an advisory is published, whatever the schedule.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Minor and patch updates together in one PR; major updates each get their own.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
