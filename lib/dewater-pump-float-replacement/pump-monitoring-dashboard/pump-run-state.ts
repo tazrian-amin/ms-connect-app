@@ -41,9 +41,9 @@ export const PUMP_RUN_STATE_LABELS: Record<PumpRunState, string> = {
  * is the whole point of the row.
  */
 export const PUMP_RUN_STATE_TEXT_COLORS: Record<PumpRunState, string> = {
-  run: PumpMonitoringPalette.greenActive,
+  run: PumpMonitoringPalette.successText,
   idle: PumpMonitoringPalette.text,
   enabled: PumpMonitoringPalette.text,
-  fault: PumpMonitoringPalette.redActive,
+  fault: PumpMonitoringPalette.dangerText,
   disabled: PumpMonitoringPalette.textMuted,
 };

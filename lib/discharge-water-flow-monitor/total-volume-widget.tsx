@@ -56,7 +56,7 @@ export function TotalVolumeWidget({ messenger, gallons }: TotalVolumeWidgetProps
           variant="outlined"
           color="inherit"
           endIcon={<ArrowDropDownIcon />}
-          aria-label={`Volume unit: ${VOLUME_UNITS[unit].name}`}
+          aria-label={`Volume unit: ${VOLUME_UNITS[unit].label} (${VOLUME_UNITS[unit].name})`}
           aria-haspopup="menu"
           onClick={(event) => setMenuAnchor(event.currentTarget)}
           sx={{ flexShrink: 0, textTransform: "none", color: "text.secondary", borderColor: "divider" }}

@@ -46,7 +46,7 @@ test.describe("homepage", () => {
     await page.getByRole("searchbox", { name: "Search devices" }).fill("flow");
     await expect(page.getByRole("button", { name: "Show device details" })).toHaveCount(1);
 
-    await page.getByRole("button", { name: "Hidden device. Show its details." }).tap();
+    await page.getByRole("button", { name: "Reveal Device", exact: true }).tap();
     await page.getByRole("link", { name: /Discharge Water Flow Monitor/ }).tap();
     await expect(page.getByRole("heading", { level: 1, name: "Discharge Water Flow Monitor" })).toBeVisible();
   });

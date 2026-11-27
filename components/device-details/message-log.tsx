@@ -32,7 +32,11 @@ export function MessageLog<C extends CommandSet>({ messenger }: { messenger: Dev
         </Button>
       }
     >
+      {/* Focusable so keyboard users can scroll it: it holds no controls. */}
       <Box
+        tabIndex={0}
+        role="region"
+        aria-label="Messages"
         sx={{
           mt: 2,
           maxHeight: 360,

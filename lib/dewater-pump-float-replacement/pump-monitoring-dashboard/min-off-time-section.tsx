@@ -223,7 +223,7 @@ export function MinOffTimeSection({
             // disabled, which is exactly when MUI dims it.
             "&.Mui-disabled": {
               ...(applyState === "applied"
-                ? { color: PumpMonitoringPalette.greenActive }
+                ? { color: PumpMonitoringPalette.successText }
                 : {}),
             },
           }}

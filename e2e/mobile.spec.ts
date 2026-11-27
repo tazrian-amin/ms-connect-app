@@ -22,7 +22,7 @@ test("the homepage shows one column of cards and doesn't scroll sideways", async
 
 test("revealing and opening a device works by tap", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Hidden device. Show its details." }).last().tap();
+  await page.getByRole("button", { name: "Reveal Device", exact: true }).last().tap();
   await page.getByRole("link", { name: /Asset Tracker/ }).tap();
   await expect(page.getByRole("heading", { level: 1, name: "Asset Tracker" })).toBeVisible();
 });

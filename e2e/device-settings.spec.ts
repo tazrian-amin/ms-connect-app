@@ -138,10 +138,10 @@ test.describe("discharge water flow monitor", () => {
 
   test("the total can be shown in other units, and the choice is remembered", async ({ page }) => {
     const gallons = await readGallons(page);
-    await page.getByRole("button", { name: "Volume unit: US gallons" }).click();
+    await page.getByRole("button", { name: "Volume unit: gal (US gallons)" }).click();
     await page.getByRole("menuitem", { name: /Litres/ }).click();
 
-    await expect(page.getByRole("button", { name: "Volume unit: Litres" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Volume unit: L (Litres)" })).toBeVisible();
     const litres = await readGallons(page);
     // 3.785 L to the gallon; the total keeps growing meanwhile, so allow a little.
     expect(litres / gallons).toBeGreaterThan(3.7);
@@ -149,6 +149,6 @@ test.describe("discharge water flow monitor", () => {
 
     await page.getByRole("button", { name: "Exit demo" }).click();
     await page.reload();
-    await expect(page.getByRole("button", { name: "Volume unit: Litres" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Volume unit: L (Litres)" })).toBeVisible();
   });
 });

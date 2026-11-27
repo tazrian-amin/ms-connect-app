@@ -13,12 +13,12 @@ const cards = (page: import("@playwright/test").Page) =>
 test("every device card starts hidden", async ({ page }) => {
   await expect(cards(page)).toHaveCount(DEVICE_COUNT);
   await expect(page.getByRole("button", { name: "Show device details" })).toHaveCount(DEVICE_COUNT);
-  await expect(page.getByRole("button", { name: "Hidden device. Show its details." })).toHaveCount(DEVICE_COUNT);
+  await expect(page.getByRole("button", { name: "Reveal Device", exact: true })).toHaveCount(DEVICE_COUNT);
   await expect(page.getByText("Asset Tracker", { exact: true })).toHaveCount(0);
 });
 
 test("revealing a card shows its name, survives a reload, and can be hidden again", async ({ page }) => {
-  await page.getByRole("button", { name: "Hidden device. Show its details." }).first().click();
+  await page.getByRole("button", { name: "Reveal Device", exact: true }).first().click();
   await expect(page.getByRole("button", { name: "Hide device details" })).toHaveCount(1);
   const name = page.getByRole("heading", { level: 3, name: "Dewater Pump Float Replacement" });
   await expect(name).toBeVisible();
