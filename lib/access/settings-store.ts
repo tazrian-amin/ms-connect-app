@@ -30,7 +30,9 @@ export type AccessSettings = {
 };
 
 const KEY = "ms-connect:access-settings";
-const FILE = join(process.cwd(), ".data", "access-settings.json");
+// ACCESS_SETTINGS_DIR lets the end-to-end tests keep their own settings (see playwright.config.ts).
+const DATA_DIR = process.env.ACCESS_SETTINGS_DIR || join(process.cwd(), ".data");
+const FILE = join(DATA_DIR, "access-settings.json");
 // Every request through proxy.ts reads the settings, so they are kept in memory for a few
 // seconds. A change made on another server instance takes at most this long to apply there.
 const CACHE_TTL_MS = 5_000;
@@ -82,7 +84,7 @@ async function save(settings: AccessSettings, { onlyIfAbsent = false } = {}): Pr
   }
   if (process.env.VERCEL) throw new StorageNotConfiguredError();
   try {
-    await mkdir(join(process.cwd(), ".data"), { recursive: true });
+    await mkdir(DATA_DIR, { recursive: true });
     // Write then rename, so a reader never sees a half-written file.
     const temp = `${FILE}.${process.pid}.tmp`;
     await writeFile(temp, JSON.stringify(settings, null, 2), { mode: 0o600 });

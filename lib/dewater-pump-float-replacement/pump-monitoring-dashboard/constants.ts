@@ -13,13 +13,16 @@ export const PumpMonitoringPalette = {
   waterActive: "#3b82f6",
   waterActiveGlow: "rgba(59, 130, 246, 0.45)",
   greenActive: "#10b981",
+  /** Text versions of the indicator colours, which are too light to read as words on the panels. */
+  successText: "var(--panel-success-text)",
+  dangerText: "var(--panel-danger-text)",
   greenActiveGlow: "rgba(16, 185, 129, 0.45)",
   redActive: "#ef4444",
   redActiveGlow: "rgba(239, 68, 68, 0.45)",
   /** Low/min end of a range — pairs with redActive for the high/max end. */
   amberActive: "#f59e0b",
   indicatorOff: "#94a3b8",
-  waterBadgeText: "#1d4ed8",
+  waterBadgeText: "var(--panel-water-text)",
   resetButtonBg: "var(--panel-control-bg)",
   resetButtonText: "var(--panel-text)",
   /**
@@ -47,7 +50,7 @@ export const PumpMonitoringPalette = {
    */
   currentActive: "#8b5cf6",
   currentActiveGlow: "rgba(139, 92, 246, 0.45)",
-  currentBadgeText: "#6d28d9",
+  currentBadgeText: "var(--panel-current-text)",
   thresholdPointer: "#64748b",
   thresholdPointerBorder: "#475569",
   thresholdPointerGrip: "#f1f5f9",

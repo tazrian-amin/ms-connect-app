@@ -1,4 +1,5 @@
 import { UnloadGuard } from "@/components/bluetooth/unload-guard";
+import { ResumeCloudLinks } from "@/components/cloud/resume-cloud-links";
 import { AppUpdater } from "@/components/providers/app-updater";
 import { ErrorToast } from "@/components/providers/error-toast";
 import { OfflineNavigation } from "@/components/providers/offline-navigation";
@@ -19,6 +20,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <OfflineNavigation />
       <SessionWatcher />
       <UnloadGuard />
+      <ResumeCloudLinks />
     </>
   );
 }

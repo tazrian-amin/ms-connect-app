@@ -354,7 +354,8 @@ export function PumpMonitoringDashboard({
             panel; every track is sized to what stands in it (see
             PUMP_COLUMN_WIDTH), which keeps the scroll off all but the
             narrowest screens. */}
-        <Box sx={{ overflowX: "auto" }}>
+        {/* Focusable so keyboard users can scroll it too: its switches are disabled until edits are enabled. */}
+        <Box tabIndex={0} role="region" aria-label="Pumps" sx={{ overflowX: "auto" }}>
           <Box
             sx={{
               display: "grid",

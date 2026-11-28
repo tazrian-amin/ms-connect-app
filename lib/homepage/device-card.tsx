@@ -50,7 +50,7 @@ export function DeviceCard({ device, revealed, onToggleView }: DeviceCardProps) 
       <CardActionArea
         {...(revealed
           ? { component: Link, href: `/devices/${device.slug}` }
-          : { onClick: onToggleView, "aria-label": "Hidden device. Show its details." })}
+          : { onClick: onToggleView })}
         sx={{
           height: "100%",
           display: "flex",
