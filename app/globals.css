@@ -29,6 +29,9 @@
   --panel-danger-text: #b91c1c;
   /* Status words in green, readable on --panel-bg-alt (the indicator green #10b981 is too light for text). */
   --panel-success-text: #047857;
+  /* Reading text in the colour of its gauge (blue water level, violet motor current). */
+  --panel-water-text: #1d4ed8;
+  --panel-current-text: #6d28d9;
 }
 
 @theme inline {
@@ -63,6 +66,8 @@
   --panel-danger-border: rgba(248, 113, 113, 0.5);
   --panel-danger-text: #fca5a5;
   --panel-success-text: #34d399;
+  --panel-water-text: #93c5fd;
+  --panel-current-text: #c4b5fd;
 }
 
 body {

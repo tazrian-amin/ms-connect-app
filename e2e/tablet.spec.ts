@@ -117,6 +117,8 @@ test.describe("asset tracker", () => {
     await expect(dialog).toBeVisible();
     await expectOnScreen(page, dialog);
     await dialog.getByRole("button", { name: "Cancel" }).tap();
+    // Until it has faded out, its backdrop takes the next tap and the dialog doesn't reopen.
+    await expect(dialog).toBeHidden();
 
     await connectSerial(page, "AT-100");
     await expect(statusChip(page, "Connected")).toBeVisible();

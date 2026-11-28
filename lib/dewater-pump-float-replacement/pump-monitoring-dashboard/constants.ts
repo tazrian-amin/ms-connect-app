@@ -22,7 +22,7 @@ export const PumpMonitoringPalette = {
   /** Low/min end of a range — pairs with redActive for the high/max end. */
   amberActive: "#f59e0b",
   indicatorOff: "#94a3b8",
-  waterBadgeText: "#1d4ed8",
+  waterBadgeText: "var(--panel-water-text)",
   resetButtonBg: "var(--panel-control-bg)",
   resetButtonText: "var(--panel-text)",
   /**
@@ -50,7 +50,7 @@ export const PumpMonitoringPalette = {
    */
   currentActive: "#8b5cf6",
   currentActiveGlow: "rgba(139, 92, 246, 0.45)",
-  currentBadgeText: "#6d28d9",
+  currentBadgeText: "var(--panel-current-text)",
   thresholdPointer: "#64748b",
   thresholdPointerBorder: "#475569",
   thresholdPointerGrip: "#f1f5f9",

@@ -68,6 +68,9 @@ test("a page the app doesn't have shows the offline page", async ({ page, contex
 
 test("offline, an expired session shows the password dialog and deletes the cached app", async ({ page, context }) => {
   await installForOffline(page);
+  // The page checks its session as it loads. Let that answer land first, or it can arrive after
+  // the expired one is written below and overwrite it.
+  await page.waitForLoadState("networkidle");
   // Offline first: online, the app's next session check would let the worker overwrite this
   // with the server's (still valid) answer.
   await context.setOffline(true);

@@ -9,8 +9,12 @@ export const nameField = (page: Page) => page.getByRole("textbox", { name: "Asse
 
 /** Adds an asset, from the empty state or the tab bar, with `name` or the suggested one. */
 export async function addAsset(page: Page, name?: string) {
-  const empty = page.getByRole("button", { name: "Add a new asset" });
-  await (await empty.isVisible() ? empty : page.getByRole("button", { name: "Add asset" })).click();
+  // Waits for whichever shows up: the page renders nothing until the saved assets are read, so
+  // checking for the empty state straight after loading can miss it.
+  await page
+    .getByRole("button", { name: "Add a new asset", exact: true })
+    .or(page.getByRole("button", { name: "Add asset", exact: true }))
+    .click();
   const dialog = page.getByRole("dialog", { name: "Add asset" });
   if (name !== undefined) await nameField(page).fill(name);
   await dialog.getByRole("button", { name: "Add" }).click();
