@@ -12,6 +12,12 @@ updates:
       # Minor and patch updates together in one PR; major updates each get their own.
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 (native Go compiler) has no JS API yet, so typescript-eslint
+      # (via eslint-config-next) refuses to load and lint fails. Remove this once
+      # typescript-eslint supports TS 7: https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
